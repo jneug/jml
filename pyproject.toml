@@ -1,0 +1,70 @@
+[tool.poetry]
+name = "jml"
+version = "0.0.2"
+description = "Ein Tool um Projektversionen zu generieren"
+authors = ["J. Neugebauer <ngb@helmholtz-bi.de>"]
+license = "MIT"
+readme = "README.rst"
+homepage = "http://github.com/jneug/jml"
+repository = "http://github.com/jneug/jml"
+packages = [
+    { include = "jml", from = "src" },
+]
+classifiers = [
+		"Programming Language :: Python :: 3"
+	]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+isort = "^5.10.1"
+black = "^21.12b0"
+flake8 = "^4.0.1"
+mypy = "^0.931"
+tbump = "^6.7.0"
+
+[tool.poetry.scripts]
+jml = "jml.jml:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.tbump]
+# Uncomment this if your project is hosted on GitHub:
+github_url = "https://github.com/jneug/jml/"
+
+[tool.tbump.version]
+current = "0.0.2"
+regex = '''
+  (?P<major>\d+)
+  \.
+  (?P<minor>\d+)
+  \.
+  (?P<patch>\d+)
+  '''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+[[tool.tbump.file]]
+src = "src/jml/__init__.py"
+search = '__version__ = "{current_version}"'
+
+[[tool.tbump.file]]
+src = "tests/test_jml.py"
+search = 'assert __version__ == "{current_version}"'
+
+[[tool.tbump.file]]
+src = "pyproject.toml"
+search = 'version = "{current_version}"'
+
+[[tool.tbump.file]]
+src = "README.rst"
+search = 'jml, version {current_version}'
