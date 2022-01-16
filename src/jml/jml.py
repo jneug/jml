@@ -9,7 +9,7 @@ import sys
 import typing as t
 import zipfile
 
-__version__ = "0.0.2"
+__version__ = "0.0.4"
 
 
 parser = argparse.ArgumentParser(
@@ -176,10 +176,6 @@ def debug(msg: str) -> None:
 def main() -> None:
     args = parser.parse_args()
     globals()["DEBUG_FLAG"] = args.debug
-
-    if args.show_version:
-        print("jml, version " + __version__)
-        quit()
 
     # load tag presets first
     if args.preset:
