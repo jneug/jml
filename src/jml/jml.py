@@ -167,10 +167,13 @@ RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
 DEBUG_FLAG = False
 
 
-def debug(msg: str) -> None:
+def debug(msg: str, indent: int = 0) -> None:
     """Shows a debug message if debugging is enabled."""
     if globals()["DEBUG_FLAG"]:
-        print(msg)
+        if indent:
+            print(indent * " " + msg)
+        else:
+            print(msg)
 
 
 def main() -> None:
@@ -301,6 +304,8 @@ def create_version(version: str, args: argparse.Namespace) -> None:
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
+    debug(f"creating version {ver_name} in {outdir}", 2)
+
     # compile files in the srcdir
     for root, dirs, files in os.walk(args.srcdir):
         subpath = root[len(args.srcdir) + 1 :]
@@ -314,6 +319,8 @@ def create_version(version: str, args: argparse.Namespace) -> None:
 
             _, ext = os.path.splitext(file)
             ext = ext[1:]
+
+            debug(f"working on {fullpath}", 2)
 
             if ext in args.exclude:
                 continue
@@ -371,6 +378,8 @@ def create_ml(args: argparse.Namespace) -> t.Set[str]:
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
+    debug(f"creating version {ver_name} in {outdir}", 2)
+
     for root, dirs, files in os.walk(args.srcdir):
         subpath = root[len(args.srcdir) + 1 :]
         outroot = os.path.join(outdir, subpath)
@@ -384,7 +393,7 @@ def create_ml(args: argparse.Namespace) -> t.Set[str]:
             _, ext = os.path.splitext(file)
             ext = ext[1:]
 
-            debug(f"working on {fullpath}")
+            debug(f"working on {fullpath}", 2)
 
             if ext in args.exclude:
                 continue
