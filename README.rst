@@ -17,4 +17,4 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
 .. code-block:: console
 
    $ jml --version
-   jml, version 0.0.4
+   jml, version 0.1.0
