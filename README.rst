@@ -34,7 +34,7 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
 Manuelle Installation
 ^^^^^^^^^^^^^^^^^^^^^
 
-``jml`` kann auch ohne ``pip`` einfach als Skriptdatei genutzt werden. Dazu die aktuelle Version der Datei [jml.py](https://github.com/jneug/jml/blob/main/src/jml/jml.py) aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:
+``jml`` kann auch ohne ``pip`` einfach als Skriptdatei genutzt werden. Dazu die aktuelle Version der Datei `jml.py <https://github.com/jneug/jml/blob/main/src/jml/jml.py>`_ aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:
 
 .. code-block:: console
 
