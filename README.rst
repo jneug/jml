@@ -18,3 +18,9 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
 
    $ jml --version
    jml, version 0.2.0
+
+
+Manuelle Installation
+---------------------
+
+jml kann auch ohne pip einfach als Skriptdatei genutzt werden. Dazu die aktuelle Version der Datei [jml.py]() aus dem Repository kopieren und auf der Festplatte speichern.
