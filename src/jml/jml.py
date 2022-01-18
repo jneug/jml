@@ -334,39 +334,6 @@ def main() -> None:
             create_version(ver, config)
 
 
-def test_version(version1: str, version2: str) -> bool:
-    """Compares a version with a version string and checks if the first
-    is in the range defined by the second. The second version can be
-    prefixed by one of =, <, >, >=, <= or != to compare with a range of
-    versions.
-    """
-    if RE_VERSION2.match(version1) is None:
-        return False
-    v2_match = RE_VERSION2.match(version2)
-    if v2_match is None:
-        return False
-
-    ver1 = int(version1)
-    ver2 = int(v2_match.group(2))
-    op = v2_match.group(1)
-
-    if len(op) == 0 or op == "=":
-        return ver1 == ver2
-    if op == "=" or op == "==":
-        return ver1 == ver2
-    if op == "<=":
-        return ver1 <= ver2
-    if op == "<":
-        return ver1 < ver2
-    if op == ">=":
-        return ver1 >= ver2
-    if op == ">":
-        return ver1 > ver2
-    if op == "!=" or op == "<>":
-        return ver1 != ver2
-    return False
-
-
 def create_zip(dir: str, config: configparser.ConfigParser) -> None:
     """Creates a zip file from a project version directory."""
     with zipfile.ZipFile(f"{dir}.zip", "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -588,6 +555,18 @@ def merge_configs(
     flags: t.Dict[str, bool] = dict(),
     strict: bool = False,
 ):
+    """Merges a configparser.SectionProxy with an argparse.Namespace
+    object. All key/value pairs from argparse are copied to the config object.
+    If strict is True, only keys that already exist are updated, otherwise
+    new keys are also added.
+
+    flags is a dict of argument names that are used as boolean flags with
+    the store_true/store_false action. The keys are the names of the argument
+    destination and the values the boolean that is stored (e.g. True for store_true).
+    This is necessary because boolean flags are always set and will override
+    any value already set in the config object. By providing the flags dict,
+    the option is only overriden, if the flag was supplied with the arguments.
+    """
     for k, v in vars(args).items():
         if v is not None:
             if not strict or k in config:
@@ -601,6 +580,9 @@ def merge_configs(
 
 
 def match_patterns(filename: str, patterns: t.List[str]) -> bool:
+    """Matches a filename against a list of UNIX-like filename patterns.
+    True is returned, if filename matches at least one pattern.
+    """
     for p in patterns:
         if fnmatch.fnmatch(filename, p):
             return True
@@ -608,11 +590,49 @@ def match_patterns(filename: str, patterns: t.List[str]) -> bool:
 
 
 def resolve_path(path: str, base: str = None) -> str:
+    """If path is a relative path, it is resolved to an absolute
+    path by prefixing it with base. Otherwise it is returned as
+    realpath. If base is omitted, os.getcwd() is used. Then this
+    essentially replicates os.path.abspath()
+    """
     if not os.path.isabs(path):
         if not base:
             base = os.getcwd()
         path = os.path.normpath(os.path.join(base, path))
     return os.path.realpath(path)
+
+
+def test_version(version1: str, version2: str) -> bool:
+    """Compares a version with a version string and checks if the first
+    is in the range defined by the second. The second version can be
+    prefixed by one of =, <, >, >=, <= or != to compare with a range of
+    versions.
+    """
+    if RE_VERSION2.match(version1) is None:
+        return False
+    v2_match = RE_VERSION2.match(version2)
+    if v2_match is None:
+        return False
+
+    ver1 = int(version1)
+    ver2 = int(v2_match.group(2))
+    op = v2_match.group(1)
+
+    if len(op) == 0 or op == "=":
+        return ver1 == ver2
+    if op == "=" or op == "==":
+        return ver1 == ver2
+    if op == "<=":
+        return ver1 <= ver2
+    if op == "<":
+        return ver1 < ver2
+    if op == ">=":
+        return ver1 >= ver2
+    if op == ">":
+        return ver1 > ver2
+    if op == "!=" or op == "<>":
+        return ver1 != ver2
+    return False
 
 
 # When run as a single file outside module structure
