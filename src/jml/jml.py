@@ -218,23 +218,22 @@ def main() -> None:
         proj_config = configparser.ConfigParser(interpolation=None)
         proj_config.read(proj_config_file)
         debug(f"read config from source dir at <{proj_config_file}>")
-        if not project_root and proj_config.has_option(
-            CONFIG_SECTION, "project root"
-        ):
+        if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
             project_root = resolve_path(proj_config.get(CONFIG_SECTION, "project root"))
 
     outdir = args.outdir = resolve_path(args.outdir)
-    if (
-        project_root
-        and os.path.commonprefix([project_root, srcdir]) == project_root
-    ):
+    if project_root and os.path.commonprefix([project_root, srcdir]) == project_root:
         outdir = args.outdir = os.path.dirname(
             os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
         )
 
     # build config for this run
     config = configparser.ConfigParser(
-        interpolation=None, converters={"list": lambda v: re.split(r"[,;\n]+", v), "liste": lambda v: v.split(",")}
+        interpolation=None,
+        converters={
+            "list": lambda v: re.split(r"[,;\n]+", v),
+            "liste": lambda v: v.split(","),
+        },
     )
     # running list of patterns
     excludes = set()
@@ -272,7 +271,12 @@ def main() -> None:
     merge_configs(
         settings,
         args,
-        flags={"keep empty files": False, "create zip": True, "delete ml": True, "clear": True},
+        flags={
+            "keep empty files": False,
+            "create zip": True,
+            "delete ml": True,
+            "clear": True,
+        },
     )
     if project_root:
         settings["project root"] = project_root
@@ -440,7 +444,9 @@ def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
     if config.getboolean(CONFIG_SECTION, "delete ml"):
         shutil.rmtree(outdir)
         debug("removed compiled ml directory", 1)
-    elif config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
+    elif config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(
+        CONFIG_SECTION, "create zip only"
+    ):
         create_zip(outdir, config[CONFIG_SECTION])
         if config.getboolean(CONFIG_SECTION, "create zip only"):
             shutil.rmtree(outdir)
@@ -560,7 +566,9 @@ def create_version(version: str, config: configparser.ConfigParser) -> None:
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     # Create zip file if option is set
-    if config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
+    if config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(
+        CONFIG_SECTION, "create zip only"
+    ):
         create_zip(outdir, config[CONFIG_SECTION])
         if config.getboolean(CONFIG_SECTION, "create zip only"):
             shutil.rmtree(outdir)
