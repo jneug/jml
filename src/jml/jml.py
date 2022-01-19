@@ -36,10 +36,9 @@ parser.add_argument(
     help="Name des Projektes. Standard ist der Name von IN",
 )
 parser.add_argument(
-    "-c",
-    "--clear",
+    "--no-clear",
     dest="clear",
-    action="store_true",
+    action="store_false",
     help="Löscht den Zielordner, bevor die Projektversionen erstellt werden",
 )
 parser.add_argument(
@@ -75,7 +74,6 @@ parser.add_argument(
     "--ml-suffix",
     dest="ml suffix",
     action="store",
-    default="ML",
     help="Suffix für die Musterlösung",
 )
 parser.add_argument(
@@ -167,9 +165,11 @@ DEFAULT_CONFIG = {
     "name format": "{project}_{version}",
     "include": "*.java",
     "+include": "",
-    "exclude": "*.class,*.ctxt,.DS_Store,Thumbs.db,iml,.vscode,.eclipse",
+    "exclude": "*.class,*.ctxt,.DS_Store,Thumbs.db,*.iml,.vscode,.eclipse",
     "+exclude": "",
     "create zip": "no",
+    "create zip only": "no",
+    "create zip dir": "",
     "encoding": "utf-8",
     "additional files": "",
     "project root": "",
@@ -197,31 +197,19 @@ def main() -> None:
     debug_flag = args.debug
     globals()["DEBUG_FLAG"] = debug_flag
 
+    # check srcdir
     srcdir = args.srcdir = resolve_path(args.srcdir)
-    outdir = args.outdir = resolve_path(args.outdir)
-    project_root = vars(args)["project root"]
-    if project_root:
-        project_root = resolve_path(project_root)
-
-    # check dirs
-    if os.path.isdir(srcdir):
-        if not args.name:
-            args.name = os.path.basename(srcdir)
-
-        if (
-            project_root
-            and os.path.commonprefix([project_root, srcdir]) == project_root
-        ):
-            outdir = args.outdir = os.path.dirname(
-                os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
-            )
-    else:
+    if not os.path.isdir(srcdir):
         print(
             f"Quellverzeichnis <{srcdir}> ist nicht vorhanden! Bitte wähle ein gültiges Projektverzeichnis."
         )
         quit()
 
-    # build config for this run
+    # resolve final outdir (requires to get final project root from config)
+    project_root = vars(args)["project root"]
+    if project_root:
+        project_root = resolve_path(project_root)
+
     # read project config first, to get final root dir
     proj_config = None
     proj_config_file = os.path.join(srcdir, CONFIG_FILE)
@@ -229,13 +217,23 @@ def main() -> None:
         proj_config = configparser.ConfigParser(interpolation=None)
         proj_config.read(proj_config_file)
         debug(f"read config from source dir at <{proj_config_file}>")
-        if project_root is None and proj_config.has_option(
+        if not project_root and proj_config.has_option(
             CONFIG_SECTION, "project root"
         ):
             project_root = resolve_path(proj_config.get(CONFIG_SECTION, "project root"))
 
+    outdir = args.outdir = resolve_path(args.outdir)
+    if (
+        project_root
+        and os.path.commonprefix([project_root, srcdir]) == project_root
+    ):
+        outdir = args.outdir = os.path.dirname(
+            os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
+        )
+
+    # build config for this run
     config = configparser.ConfigParser(
-        interpolation=None, converters={"list": lambda v: v.split(",")}
+        interpolation=None, converters={"list": lambda v: re.split(r"[,;\n]+", v)}
     )
     # running list of patterns
     excludes = set()
@@ -273,10 +271,12 @@ def main() -> None:
     merge_configs(
         settings,
         args,
-        flags={"keep empty files": False, "create zip": True, "delete ml": True},
+        flags={"keep empty files": False, "create zip": True, "delete ml": True, "clear": False},
     )
     if project_root:
         settings["project root"] = project_root
+    if not settings["name"]:
+        settings["name"] = os.path.basename(srcdir)
 
     # set include sets
     excludes.update(settings.getlist("exclude"))  # type: ignore
@@ -327,21 +327,128 @@ def main() -> None:
     debug("Creating solution version:")
     versions = create_solution(config)
 
-    versions = versions.intersection(args.versions)
+    versions = versions.intersection(args.versions if args.versions else versions)
     for ver in sorted(versions):
         if any(test_version(ver, v) for v in versions):
             debug(f"Creating version {ver}:")
             create_version(ver, config)
 
 
-def create_zip(dir: str, config: configparser.ConfigParser) -> None:
-    """Creates a zip file from a project version directory."""
-    with zipfile.ZipFile(f"{dir}.zip", "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(dir):
-            for file in files:
-                filepath = os.path.join(root, file)
-                relpath = os.path.relpath(filepath, start=dir)
-                zipf.write(filepath, arcname=relpath)
+def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
+    """Creates the solution version of the project by removing all task markers.
+    During compilation all version numbers in task markers are collected and
+    the set of version numbers is returned.
+    """
+    # initialize some local vars
+    srcdir = config.get(CONFIG_SECTION, "srcdir")
+    outdir = config.get(CONFIG_SECTION, "outdir")
+    name = config.get(CONFIG_SECTION, "name")
+
+    versions = set()
+
+    # prepare output name
+    ver_name = config.get(CONFIG_SECTION, "name format").format(
+        project=name,
+        version=config.get(CONFIG_SECTION, "ml suffix"),
+        date=datetime.now(),
+    )
+    outdir = os.path.join(outdir, ver_name)
+
+    # prepare output folders
+    if os.path.isdir(outdir) and config.getboolean(CONFIG_SECTION, "clear"):
+        shutil.rmtree(outdir)
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
+
+    # extract some config options to local scope
+    include = config.getlist(CONFIG_SECTION, "include")  # type: ignore
+    exclude = config.getlist(CONFIG_SECTION, "exclude")  # type: ignore
+    encoding = config.get(CONFIG_SECTION, "encoding")
+
+    tag_open = config.get(CONFIG_SECTION, "opening tag")
+    tag_close = config.get(CONFIG_SECTION, "closing tag")
+    ml_open = config.get(CONFIG_SECTION, "opening ml tag")
+    ml_close = config.get(CONFIG_SECTION, "closing ml tag")
+
+    keep_empty = config.getboolean(CONFIG_SECTION, "keep empty files")
+
+    # compile files
+    debug(f"creating version {ver_name} in {outdir}", 1)
+    for root, dirs, files in os.walk(srcdir):
+        subpath = root[len(srcdir) + 1 :]
+        outroot = os.path.join(outdir, subpath)
+
+        os.makedirs(outroot, exist_ok=True)
+
+        for file in files:
+            fullpath = os.path.join(root, file)
+            fulloutpath = os.path.join(outroot, file)
+
+            _, ext = os.path.splitext(file)
+            ext = ext[1:]
+
+            if file == ".jml":
+                continue
+            elif match_patterns(file, exclude):
+                debug(f"{file:>32} X", 2)
+                continue
+            elif match_patterns(file, include):
+                is_empty = True
+                with open(fullpath, "r", encoding=encoding) as inf:
+                    with open(fulloutpath, "w", encoding=encoding) as outf:
+                        skip = False
+                        line = inf.readline()
+                        while line:
+                            lline = line.lstrip()
+                            if lline.startswith(ml_close) or lline.startswith(ml_open):
+                                pass
+                            elif lline.startswith(tag_close):
+                                skip = False
+                            elif lline.startswith(tag_open):
+                                parts = lline.split()
+                                if len(parts) > 1:
+                                    v_match = RE_VERSION2.match(parts[1])
+                                    if v_match is not None:
+                                        for v in range(int(v_match.group(2))):
+                                            versions.add(f"{v+1}")
+                                skip = True
+                            elif skip:
+                                pass
+                            else:
+                                outf.write(line)
+                                is_empty = False
+                            line = inf.readline()
+                if is_empty and not keep_empty:
+                    os.remove(fulloutpath)
+                    debug(f"{file:>32} X  (empty)", 2)
+                else:
+                    debug(f"{file:>32} !> {fulloutpath}", 2)
+            else:
+                shutil.copy(fullpath, fulloutpath)
+                debug(f"{file:>32} -> {fulloutpath}", 2)
+
+    # copy additional files
+    additional_files = config.getlist(CONFIG_SECTION, "additional files")  # type: ignore
+    for file in additional_files:
+        if file:
+            file = resolve_path(file, srcdir)
+            if os.path.isfile(file):
+                fulloutpath = os.path.join(outdir, os.path.basename(file))
+                shutil.copy(file, fulloutpath)
+                debug(f"{file:>32} -> {fulloutpath}", 2)
+
+    if config.getboolean(CONFIG_SECTION, "delete ml"):
+        shutil.rmtree(outdir)
+        debug("removed compiled ml directory", 1)
+    elif config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
+        create_zip(outdir, config[CONFIG_SECTION])
+        if config.getboolean(CONFIG_SECTION, "create zip only"):
+            shutil.rmtree(outdir)
+            debug("removed compiled ml directory", 1)
+
+    if not versions:
+        versions.add("0")
+    return versions
 
 
 def create_version(version: str, config: configparser.ConfigParser) -> None:
@@ -442,111 +549,52 @@ def create_version(version: str, config: configparser.ConfigParser) -> None:
                 shutil.copy(fullpath, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
-    # Create zip file if option is set
-    if config.getboolean(CONFIG_SECTION, "create zip"):
-        create_zip(outdir, config)
-
-
-def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
-    """Creates the solution version of the project by removing all task markers.
-    During compilation all version numbers in task markers are collected and
-    the set of version numbers is returned.
-    """
-    # initialize some local vars
-    srcdir = config.get(CONFIG_SECTION, "srcdir")
-    outdir = config.get(CONFIG_SECTION, "outdir")
-    name = config.get(CONFIG_SECTION, "name")
-
-    versions = set()
-
-    # prepare output name
-    ver_name = config.get(CONFIG_SECTION, "name format").format(
-        project=name,
-        version=config.get(CONFIG_SECTION, "ml suffix"),
-        date=datetime.now(),
-    )
-    outdir = os.path.join(outdir, ver_name)
-
-    # prepare output folders
-    if os.path.isdir(outdir) and config.getboolean(CONFIG_SECTION, "clear"):
-        shutil.rmtree(outdir)
-    if not os.path.isdir(outdir):
-        os.makedirs(outdir)
-
-    # extract some config options to local scope
-    include = config.getlist(CONFIG_SECTION, "include")  # type: ignore
-    exclude = config.getlist(CONFIG_SECTION, "exclude")  # type: ignore
-    encoding = config.get(CONFIG_SECTION, "encoding")
-
-    tag_open = config.get(CONFIG_SECTION, "opening tag")
-    tag_close = config.get(CONFIG_SECTION, "closing tag")
-    ml_open = config.get(CONFIG_SECTION, "opening ml tag")
-    ml_close = config.get(CONFIG_SECTION, "closing ml tag")
-
-    keep_empty = config.getboolean(CONFIG_SECTION, "keep empty files")
-
-    # compile files
-    debug(f"creating version {ver_name} in {outdir}", 1)
-    for root, dirs, files in os.walk(srcdir):
-        subpath = root[len(srcdir) + 1 :]
-        outroot = os.path.join(outdir, subpath)
-
-        os.makedirs(outroot, exist_ok=True)
-
-        for file in files:
-            fullpath = os.path.join(root, file)
-            fulloutpath = os.path.join(outroot, file)
-
-            _, ext = os.path.splitext(file)
-            ext = ext[1:]
-
-            if file == ".jml":
-                continue
-            elif match_patterns(file, exclude):
-                debug(f"{file:>32} X", 2)
-                continue
-            elif match_patterns(file, include):
-                is_empty = True
-                with open(fullpath, "r", encoding=encoding) as inf:
-                    with open(fulloutpath, "w", encoding=encoding) as outf:
-                        skip = False
-                        line = inf.readline()
-                        while line:
-                            lline = line.lstrip()
-                            if lline.startswith(ml_close) or lline.startswith(ml_open):
-                                pass
-                            elif lline.startswith(tag_close):
-                                skip = False
-                            elif lline.startswith(tag_open):
-                                parts = lline.split()
-                                if len(parts) > 1:
-                                    v_match = RE_VERSION2.match(parts[1])
-                                    if v_match is not None:
-                                        versions.add(v_match.group(2))
-                                skip = True
-                            elif skip:
-                                pass
-                            else:
-                                outf.write(line)
-                                is_empty = False
-                            line = inf.readline()
-                if is_empty and not keep_empty:
-                    os.remove(fulloutpath)
-                    debug(f"{file:>32} X  (empty)", 2)
-                else:
-                    debug(f"{file:>32} !> {fulloutpath}", 2)
-            else:
-                shutil.copy(fullpath, fulloutpath)
+    # copy additional files
+    additional_files = config.getlist(CONFIG_SECTION, "additional files")  # type: ignore
+    for file in additional_files:
+        if file:
+            file = resolve_path(file, srcdir)
+            if os.path.isfile(file):
+                fulloutpath = os.path.join(outdir, os.path.basename(file))
+                shutil.copy(file, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
-    if config.getboolean(CONFIG_SECTION, "delete ml"):
-        shutil.rmtree(outdir)
-    elif config.getboolean(CONFIG_SECTION, "create zip"):
-        create_zip(outdir, config)
+    # Create zip file if option is set
+    if config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
+        create_zip(outdir, config[CONFIG_SECTION])
+        if config.getboolean(CONFIG_SECTION, "create zip only"):
+            shutil.rmtree(outdir)
+            debug("removed compiled project version directory", 1)
 
-    if not versions:
-        versions.add("0")
-    return versions
+
+def create_zip(path: str, settings: configparser.SectionProxy) -> None:
+    """Creates a zip file from a project version directory."""
+    if settings.getboolean("create zip") or settings.getboolean("create zip only"):
+        dir, filename = os.path.split(path)
+
+        # prepare output directory
+        if settings["create zip dir"]:
+            dir = resolve_path(settings["create zip dir"])
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        # prepare output filename
+        filename = f"{filename}.zip"
+        outfile = os.path.join(dir, filename)
+        if os.path.isfile(filename):
+            os.remove(outfile)
+        elif os.path.isdir(filename):
+            debug(f"directory found at <{outfile}>! unable to create zip file.", 1)
+            return
+
+        # create zip file
+        with zipfile.ZipFile(outfile, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(path):
+                for file in files:
+                    filepath = os.path.join(root, file)
+                    relpath = os.path.relpath(filepath, start=path)
+                    zipf.write(filepath, arcname=relpath)
+            debug(f"created zip file at <{outfile}>", 1)
 
 
 def merge_configs(
