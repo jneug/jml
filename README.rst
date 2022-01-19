@@ -190,3 +190,81 @@ Eine Übersicht der verfügbaren Kommandozeilen-Argumente ist mit ``-h`` abrufba
 
    $ jml -h
 
+Alle Optionen (und noch eine Handvoll mehr) lassen sich auch in einer von mehreren Konfigurationsdateien festlegen. ``jml`` sucht dazu bei jedem Start nach ``.jml`` Dateien im Basisprojekt, im Gruppenverzeichnis (``--project-root``) und im Home-Ordner des angemeldeten Nutzers (``~/.jml``).
+
+Die Konfigurationen werden dann in umgekehrter Reihenfolge geladen, die Einstellungen im Basisprojekt haben also die höchste Priorität. Sie werden nur noch von Kommandozeilen-Argumente überschrieben.
+
+Für das Beispiel oben könnte der Aufbau so aussehen:
+
+.. code-block:: plain
+
+    ~/
+    ├── .jml
+    ├── pfad/zur/gruppe/
+    │   ├── .jml
+    │   └── ProjektOrdner/
+    │       ├── .jml
+    │       └── Beispiel.java
+    └── pfad/zum/ausgabeordner
+
+Inhalt von ``~/.jml``:
+
+.. code-block:: ini
+
+   [settings]
+   opening tag=/*<aufgabe>
+   closing tag=</aufgabe>*/
+   opening ml tag=//<loesung>
+   closing ml tag=//</loesung>
+
+Inhalt von ``~/pfad/zur/gruppe/.jml``:
+
+.. code-block:: ini
+
+   [settings]
+   zip = yes
+   ml suffix = Loesung
+   name format = {project}-{version}
+   include = *.java,*.txt
+
+Inhalt von ``~/pfad/zur/gruppe/ProjektOrdner/.jml``:
+
+.. code-block:: ini
+
+   [settings]
+   opening tag=/*aufgabe*
+   closing tag=*aufgabe*/
+   encoding = iso-8859-1
+   name = Maeusekampf
+
+Der Aufruf von ``jml`` sieht dann so aus:
+
+.. code-block:: console
+
+   $ jml --project-root "~/pfad/zur/gruppe" "~/pfad/zur/gruppe/ProjektOrdner" "pfad/zum/ausgabeordner"
+
+``jml`` lädt nun zunächst ``~/.jml`` und setzt die Start- und Endmarkierungen auf eine XML-Variante.
+
+Danach wird ``~/pfad/zur/gruppe/.jml`` geladen, da dies per ``--project-root`` Argument als Gruppenverzeichnis gesetzt wurde. Für diese Projektgruppe werden ZIP-Dateien der Projektversionen erzeugt, außerdem wird das Suffix für dei Musterlösung von ``ML`` auf ``Loesung`` geändert. Das Format der Projektnamen wird angepasst (``_`` durch ``-`` ersetzt) und es werden auch ``.txt`` Dateien nach den Aufgaben- und Lösungs-Markierungen durchsucht.
+
+Als drittes wird ``~/pfad/zur/gruppe/ProjektOrdner/.jml`` geladen. Hier werden speziell für dieses eine Projekt die Aufgaben-Marker erneut verändert und die Datei-Codierung auf ``iso-8859-1`` (statt ``utf-8``) festgelegt. Schließlich wird noch der Projektname auf ``Maeusekampf`` festgelgt, anstatt den Ordnernamen ``ProjektOrdner`` zu verwenden.
+
+Die Ausgabe sieht dann so aus (sofern die Aufgaben- und Lösungs-Markierungen in ``Beispiel.java`` angepasst wurden):
+
+.. code-block:: plain
+
+    ~/
+    ├── .jml
+    ├── pfad/zur/gruppe/
+    │   ├── .jml
+    │   └── ProjektOrdner/
+    │       ├── .jml
+    │       └── Beispiel.java
+    └── pfad/zum/ausgabeordner/
+        ├── Maeusekampf-Loesung/
+        │   └── Beispiel.java
+        ├── Maeusekampf-1/
+        │   └── Beispiel.java
+        └── Maeusekampf-2/
+            └── Beispiel.java
+
