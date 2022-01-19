@@ -43,7 +43,7 @@ Manuelle Installation
 
 
 Benutzung
-=========
+---------
 
 ``jml`` benötigt im einfachsten Fall den Pfad des Basisprojektes und den Pfad des Ausgabeordners:
 
@@ -78,9 +78,7 @@ Angenommen in ``ProjektOrdner`` liegt eine Datei mit dem Namen ``Beispiel.java``
         }
     }
 
-Dann erzeugt ``jml`` diese Ordnerstruktur in ``pfad/zum/ausgabeordner``:
-
-.. code-block:: plain
+Dann erzeugt ``jml`` diese Ordnerstruktur in ``pfad/zum/ausgabeordner``::
 
     pfad/zum/ausgabeordner/
     ├── ProjektOrdner/
@@ -115,7 +113,7 @@ Inhalt von ``ProjektOrdner/Beispiel.java``:
 
 
 Mehrere Versionen
------------------
+^^^^^^^^^^^^^^^^^
 
 Als Standard wird wie oben nur die Projektversion ``0`` erstellt. ``jml`` kann aber auch mehrere Projekte erstellen, wenn die Aufgaben-Markierungen mit einer entsprechenden Nummer versehen werden.
 
@@ -150,9 +148,7 @@ Angenommen die ``Beispiel.java`` von oben sieht so aus:
 
     }
 
-Dann wird werden statt der Version ``0`` die Projektversionen ``1`` und ``2`` erzeugt, da im zweiten Aufgaben-Marker eine konkrete Versionsnummer angegeben wurde.
-
-.. code-block:: plain
+Dann wird werden statt der Version ``0`` die Projektversionen ``1`` und ``2`` erzeugt, da im zweiten Aufgaben-Marker eine konkrete Versionsnummer angegeben wurde::
 
     pfad/zum/ausgabeordner/
     ├── ProjektOrdner_1/
@@ -180,7 +176,7 @@ Es ist auch möglich eine Markierung für mehrere Projektversionen zu nutzen:
 
 
 Optionen
-========
+--------
 
 Die Funktion von ``jml`` ist durch eine Vielzahl von Optionen anpassbar. Die Optionen können als Kommandozeilen-Argumente übergeben, oder in Konfigurationsdateien gespeichert werden.
 
@@ -194,9 +190,7 @@ Alle Optionen (und noch eine Handvoll mehr) lassen sich auch in einer von mehrer
 
 Die Konfigurationen werden dann in umgekehrter Reihenfolge geladen, die Einstellungen im Basisprojekt haben also die höchste Priorität. Sie werden nur noch von Kommandozeilen-Argumente überschrieben.
 
-Für das Beispiel oben könnte der Aufbau so aussehen:
-
-.. code-block:: plain
+Für das Beispiel oben könnte der Aufbau so aussehen::
 
     ~/
     ├── .jml
@@ -249,9 +243,7 @@ Danach wird ``~/pfad/zur/gruppe/.jml`` geladen, da dies per ``--project-root`` A
 
 Als drittes wird ``~/pfad/zur/gruppe/ProjektOrdner/.jml`` geladen. Hier werden speziell für dieses eine Projekt die Aufgaben-Marker erneut verändert und die Datei-Codierung auf ``iso-8859-1`` (statt ``utf-8``) festgelegt. Schließlich wird noch der Projektname auf ``Maeusekampf`` festgelgt, anstatt den Ordnernamen ``ProjektOrdner`` zu verwenden.
 
-Die Ausgabe sieht dann so aus (sofern die Aufgaben- und Lösungs-Markierungen in ``Beispiel.java`` angepasst wurden):
-
-.. code-block:: plain
+Die Ausgabe sieht dann so aus (sofern die Aufgaben- und Lösungs-Markierungen in ``Beispiel.java`` angepasst wurden)::
 
     ~/
     ├── .jml
