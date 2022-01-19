@@ -1,0 +1,8 @@
+[settings]
+create zip = yes
+ml suffix = Loesung
+name format = {project}-{version}
+include = *.java,*.txt
+# copied from ~/.jml
+opening ml tag=//<loesung>
+closing ml tag=//</loesung>
