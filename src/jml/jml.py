@@ -15,10 +15,37 @@ from datetime import datetime
 __version__ = "0.2.4"
 
 
+class JMLHelpFormatter(argparse.HelpFormatter):
+    """Custom HelpFormatter to replace spaces with underscores in
+    metavars.
+    """
+    def __init__(self,
+                 prog,
+                 indent_increment=2,
+                 max_help_position=24,
+                 width=None):
+        super().__init__(prog, indent_increment=2, max_help_position=24, width=None)
+
+    def _metavar_formatter(self, action, default_metavar):
+        sformat = super()._metavar_formatter(action, default_metavar)
+
+        def new_format(tuple_size):
+            t = sformat(tuple_size)
+            return tuple(r.replace(" ", "_") if r else r for r in t)
+        return new_format
+
+
 parser = argparse.ArgumentParser(
-    prog="jml", description="Generiert aus einem Basisprojekt mehrere Projektversionen."
+    prog="jml", description="Generiert aus einem Basisprojekt mehrere Projektversionen.",
+    add_help=False,
+    formatter_class=JMLHelpFormatter
 )
 
+parser.add_argument(
+    "-h", "--help",
+    action="help",
+    help="Diesen Hilfetext anzeigen.",
+)
 parser.add_argument(
     "--version",
     action="version",
@@ -26,78 +53,65 @@ parser.add_argument(
     help="Programmversion anzeigen.",
 )
 
+# Argumente
 parser.add_argument("srcdir", metavar="IN", help="Pfad des Basisprojektes")
 parser.add_argument("outdir", metavar="OUT", help="Pfad des Zielordners")
+# Optionen
 parser.add_argument(
-    "-n",
-    "--name",
+    "-n", "--name",
     dest="name",
     action="store",
-    help="Name des Projektes. Standard ist der Name von IN",
+    help="Name der Projektversionen. Standard ist der Name von IN.",
 )
 parser.add_argument(
-    "--no-clear",
-    dest="clear",
-    action="store_false",
-    help="Löscht den Zielordner, bevor die Projektversionen erstellt werden",
-)
-parser.add_argument(
-    "-to",
-    "--tag-open",
-    dest="opening tag",
-    action="store",
-    help="Öffnender Tag für Aufgaben",
-)
-parser.add_argument(
-    "-tc",
-    "--tag-close",
-    dest="closing tag",
-    action="store",
-    help="Schließender Tag für Aufgaben",
-)
-parser.add_argument(
-    "-mlo",
-    "--ml-open",
-    dest="opening ml tag",
-    action="store",
-    help="Öffnender Tag für Musterlösungen",
-)
-parser.add_argument(
-    "-mlc",
-    "--ml-close",
-    dest="closing ml tag",
-    action="store",
-    help="Schließender Tag für Musterlösungen",
-)
-parser.add_argument(
-    "-mls",
-    "--ml-suffix",
-    dest="ml suffix",
-    action="store",
-    help="Suffix für die Musterlösung",
-)
-parser.add_argument(
-    "-nf",
-    "--name-format",
+    "-nf", "--name-format",
     dest="name format",
     action="store",
-    help="Format für die Namen der Projektversionen. Angabe als Python Formatstring. Kann die Variablen {project}, {version} und {date} enthalten.",
+    help="Format für die Namen der Projektversionen. Angabe als Python-Formatstring. Kann die Variablen {project}, {version} und {date} enthalten. Standard: {project}_{version}",
 )
 parser.add_argument(
-    "-i",
-    "--include",
+    "-mls", "--ml-suffix",
+    dest="ml suffix",
+    action="store",
+    help="Suffix für die Musterlösung. Standard: ML",
+)
+parser.add_argument(
+    "-to", "--tag-open",
+    dest="opening tag",
+    action="store",
+    help="Öffnende Aufgaben-Markierung.Standard: /*aufg*",
+)
+parser.add_argument(
+    "-tc", "--tag-close",
+    dest="closing tag",
+    action="store",
+    help="Schließende Aufgaben-Markierung. Standard: *aufg*/",
+)
+parser.add_argument(
+    "-mlo", "--ml-open",
+    dest="opening ml tag",
+    action="store",
+    help="Öffnende Lösungs-Markierung. Standard: //ml*",
+)
+parser.add_argument(
+    "-mlc", "--ml-close",
+    dest="closing ml tag",
+    action="store",
+    help="Schließende Lösungs-Markierung. Standard: //*ml",
+)
+parser.add_argument(
+    "-i", "--include",
     dest="include",
     action="extend",
     nargs="+",
-    help="Liste mit Dateiendungen, die nach JML-Kommentaren durchsucht werden sollen",
+    help="Liste mit Suchmustern für Dateien, die nach JML-Kommentaren durchsucht werden sollen. Standard: *.java",
 )
 parser.add_argument(
-    "-e",
-    "--exclude",
+    "-e", "--exclude",
     dest="exclude",
     action="extend",
     nargs="+",
-    help="Liste von Dateiendungen, die ignoriert werden",
+    help="Liste mit Suchmustern für Dateien, die komplett ignoriert werden und nicht in den Projektversionen auftauchen. Standard: *.class,*.ctxt,.DB_Store,Thumbs.db",
 )
 parser.add_argument(
     "-v",
@@ -105,26 +119,32 @@ parser.add_argument(
     dest="versions",
     action="extend",
     type=str,
-    help="Liste von Versionen, die erstellt werden sollen",
+    help="Liste von Versionen, die erstellt werden sollen.",
 )
 parser.add_argument(
     "--project-root",
     dest="project root",
     action="store",
-    help="if set to a prefix of IN, the folder structure in OUT will reflect the structure of the project root. For IN=/projects/foo/bar/my-project OUT=/projects/out project-root=/projects the resulting versions will be written to /projects/out/foo/bar",
+    help="Bestimmt ein Verzeichnis, das als Wurzelverzeichnis für mehrere Projekte dient. Wenn dies ein Prefix von IN ist, dann reflektiert die Ordnerstruktur in OUT die des Wurzelverzeichnisses. Für IN=/projects/foo/bar/my-project OUT=/projects/out project-root=/projects werden die Projektversionen dann in /projects/out/foo/bar erstellt.",
 )
 parser.add_argument(
     "--encoding",
     dest="encoding",
     action="store",
-    help="Codierung für Dateien. Standard: utf-8",
+    help="Zeichencodierung für Dateien. Standard: utf-8",
+)
+parser.add_argument(
+    "--no-clear",
+    dest="clear",
+    action="store_false",
+    help="Verhindert das Löschen der Projektversionen vor Ausführung.",
 )
 parser.add_argument(
     "--delete-empty",
     dest="keep empty files",
     action="store_false",
     default=True,
-    help="Als Standard werden leere Dateien in die Projektversionen kopiert. Diese Einstellung löscht leere Dateien.",
+    help="Leere Dateien aus den Projektversionen löschen.",
 )
 parser.add_argument(
     "-z",
@@ -132,14 +152,14 @@ parser.add_argument(
     dest="create zip",
     action="store_true",
     default=False,
-    help="Erstellt zusätzlich ZIP-Dateien zu den Projektversionen.",
+    help="Zusätzlich ZIP-Dateien zu den Projektversionen erstellen.",
 )
 parser.add_argument(
     "--no-ml",
     dest="delete ml",
     action="store_true",
     default=False,
-    help="Skip generating a ml version of the project. Note that the ml version is always generated, but this will delete the folder afterwards.",
+    help="Keinen Musterlösung erstellen. Beachte, dass die Musterlösung immer erstellt wird, um die zu erstellenden Projektversionen zu ermitteln. Diese Option löscht den Ordner am Ende wieder.",
 )
 
 parser.add_argument(
