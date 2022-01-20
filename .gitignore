@@ -6,6 +6,7 @@ __pycache__/
 
 .vscode/
 Cheese*
+tests/out/
 
 # C extensions
 *.so
