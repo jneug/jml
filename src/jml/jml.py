@@ -19,11 +19,8 @@ class JMLHelpFormatter(argparse.HelpFormatter):
     """Custom HelpFormatter to replace spaces with underscores in
     metavars.
     """
-    def __init__(self,
-                 prog,
-                 indent_increment=2,
-                 max_help_position=24,
-                 width=None):
+
+    def __init__(self, prog, indent_increment=2, max_help_position=24, width=None):
         super().__init__(prog, indent_increment=2, max_help_position=24, width=None)
 
     def _metavar_formatter(self, action, default_metavar):
@@ -32,17 +29,20 @@ class JMLHelpFormatter(argparse.HelpFormatter):
         def new_format(tuple_size):
             t = sformat(tuple_size)
             return tuple(r.replace(" ", "_") if r else r for r in t)
+
         return new_format
 
 
 parser = argparse.ArgumentParser(
-    prog="jml", description="Generiert aus einem Basisprojekt mehrere Projektversionen.",
+    prog="jml",
+    description="Generiert aus einem Basisprojekt mehrere Projektversionen.",
     add_help=False,
-    formatter_class=JMLHelpFormatter
+    formatter_class=JMLHelpFormatter,
 )
 
 parser.add_argument(
-    "-h", "--help",
+    "-h",
+    "--help",
     action="help",
     help="Diesen Hilfetext anzeigen.",
 )
@@ -55,59 +55,75 @@ parser.add_argument(
 
 # Argumente
 parser.add_argument("srcdir", metavar="IN", help="Pfad des Basisprojektes")
-parser.add_argument("outdir", metavar="OUT", help="Pfad des Zielordners")
+
 # Optionen
 parser.add_argument(
-    "-n", "--name",
+    "-o",
+    "--outdir",
+    dest="output dir",
+    metavar="OUT",
+    help="Pfad des Zielordners. Standard ist das Verzeichnis in dem IN liegt.",
+)
+parser.add_argument(
+    "-n",
+    "--name",
     dest="name",
     action="store",
     help="Name der Projektversionen. Standard ist der Name von IN.",
 )
 parser.add_argument(
-    "-nf", "--name-format",
+    "-nf",
+    "--name-format",
     dest="name format",
     action="store",
     help="Format für die Namen der Projektversionen. Angabe als Python-Formatstring. Kann die Variablen {project}, {version} und {date} enthalten. Standard: {project}_{version}",
 )
 parser.add_argument(
-    "-mls", "--ml-suffix",
+    "-mls",
+    "--ml-suffix",
     dest="ml suffix",
     action="store",
     help="Suffix für die Musterlösung. Standard: ML",
 )
 parser.add_argument(
-    "-to", "--tag-open",
+    "-to",
+    "--tag-open",
     dest="opening tag",
     action="store",
     help="Öffnende Aufgaben-Markierung.Standard: /*aufg*",
 )
 parser.add_argument(
-    "-tc", "--tag-close",
+    "-tc",
+    "--tag-close",
     dest="closing tag",
     action="store",
     help="Schließende Aufgaben-Markierung. Standard: *aufg*/",
 )
 parser.add_argument(
-    "-mlo", "--ml-open",
+    "-mlo",
+    "--ml-open",
     dest="opening ml tag",
     action="store",
     help="Öffnende Lösungs-Markierung. Standard: //ml*",
 )
 parser.add_argument(
-    "-mlc", "--ml-close",
+    "-mlc",
+    "--ml-close",
     dest="closing ml tag",
     action="store",
     help="Schließende Lösungs-Markierung. Standard: //*ml",
 )
 parser.add_argument(
-    "-i", "--include",
+    "-i",
+    "--include",
     dest="include",
     action="extend",
     nargs="+",
     help="Liste mit Suchmustern für Dateien, die nach JML-Kommentaren durchsucht werden sollen. Standard: *.java",
 )
 parser.add_argument(
-    "-e", "--exclude",
+    "-e",
+    "--exclude",
     dest="exclude",
     action="extend",
     nargs="+",
@@ -177,6 +193,7 @@ CONFIG_FILE = ".jml"
 CONFIG_SECTION = "settings"
 DEFAULT_CONFIG = {
     "name": "",
+    "output dir": "",
     "opening tag": "/*aufg*",
     "closing tag": "*aufg*/",
     "opening ml tag": "//ml*",
@@ -194,6 +211,8 @@ DEFAULT_CONFIG = {
     "create zip dir": "",
     "encoding": "utf-8",
     "additional files": "",
+    "+additional files": "",
+    "-additional files": "",
     "project root": "",
     "clear": "yes",
     "delete ml": "no",
@@ -227,7 +246,7 @@ def main() -> None:
         )
         quit()
 
-    # resolve final outdir (requires to get final project root from config)
+    # resolve final rootdir (requires to get final project root from config)
     project_root = vars(args)["project root"]
     if project_root:
         project_root = resolve_path(project_root)
@@ -239,57 +258,31 @@ def main() -> None:
         proj_config = configparser.ConfigParser(interpolation=None)
         proj_config.read(proj_config_file)
         debug(f"read config from source dir at <{proj_config_file}>")
-        if not project_root and proj_config.has_option(
-            CONFIG_SECTION, "project root"
-        ):
-            project_root = resolve_path(proj_config.get(CONFIG_SECTION, "project root"))
-
-    outdir = args.outdir = resolve_path(args.outdir)
-    if (
-        project_root
-        and os.path.commonprefix([project_root, srcdir]) == project_root
-    ):
-        outdir = args.outdir = os.path.dirname(
-            os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
-        )
+        if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
+            project_root = resolve_path(proj_config.get(CONFIG_SECTION, "project root"), srcdir)
 
     # build config for this run
     config = configparser.ConfigParser(
         interpolation=None, converters={"list": lambda v: re.split(r"[,;\n]+", v)}
     )
-    # running list of patterns
-    excludes = (set(), set())
-    includes = (set(), set())
+
     # set defaults
     config[CONFIG_SECTION] = DEFAULT_CONFIG
     settings = config[CONFIG_SECTION]
 
     # read default user config
     user_config_file = os.path.expanduser(os.path.join("~", CONFIG_FILE))
-    if os.path.exists(user_config_file):
-        config.read(user_config_file)
+    if read_config(config, user_config_file):
         debug(f"read config from user home at <{user_config_file}>")
-        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
-        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
-        includes[0].update(settings.getlist("+include"))  # type: ignore
-        includes[1].update(settings.getlist("-include"))  # type: ignore
     # read project root config
     if project_root:
         root_config_file = os.path.join(project_root, CONFIG_FILE)
-        if os.path.exists(root_config_file):
-            config.read(root_config_file)
+        if read_config(config, root_config_file):
             debug(f"read config from project root at <{root_config_file}>")
-        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
-        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
-        includes[0].update(settings.getlist("+include"))  # type: ignore
-        includes[1].update(settings.getlist("-include"))  # type: ignore
     # read project specific config
     if proj_config:
         config.read_dict(proj_config, source=proj_config_file)
-        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
-        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
-        includes[0].update(settings.getlist("+include"))  # type: ignore
-        includes[1].update(settings.getlist("-include"))  # type: ignore
+        resolve_config(config, base=srcdir)
     # unset everything other than default keys
     for k in settings.keys():
         if k not in DEFAULT_CONFIG.keys():
@@ -299,24 +292,17 @@ def main() -> None:
     merge_configs(
         settings,
         args,
-        flags={"keep empty files": False, "create zip": True, "delete ml": True, "clear": False},
+        flags={
+            "keep empty files": False,
+            "create zip": True,
+            "delete ml": True,
+            "clear": False,
+        },
     )
     if project_root:
         settings["project root"] = project_root
     if not settings["name"]:
         settings["name"] = os.path.basename(srcdir)
-
-    # set include sets
-    excludes[0].update(settings.getlist("exclude"))  # type: ignore
-    includes[0].update(settings.getlist("include"))  # type: ignore
-    excludes[0].difference_update(excludes[1])  # type: ignore
-    includes[0].difference_update(includes[1])  # type: ignore
-    settings["exclude"] = ",".join(excludes[0])
-    settings["include"] = ",".join(includes[0])
-    del settings["+exclude"]
-    del settings["+include"]
-    del settings["-exclude"]
-    del settings["-include"]
 
     # show config for debugging
     if debug_flag:
@@ -351,58 +337,73 @@ def main() -> None:
         )
         quit()
 
+    # prepare outdir
+    outdir = vars(args)["output dir"]
+    if not outdir:
+        if not settings["output dir"]:
+            outdir = os.path.dirname(srcdir)
+        else:
+            outdir = settings["output dir"]
+    else:
+        outdir = resolve_path(outdir)
+    if project_root and os.path.commonprefix([project_root, srcdir]) == project_root:
+        outdir = os.path.dirname(
+            os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
+        )
+    settings["output dir"] = outdir
+
     #  run jml
     debug("Compiling source project <{}>".format(settings["name"]))
     debug(f"from <{srcdir}>", 1)
     debug(f"  to <{outdir}>", 1)
 
     debug("Creating solution version:")
-    versions = create_solution(config)
+    versions = create_solution(settings)
 
     versions = versions.intersection(args.versions if args.versions else versions)
     for ver in sorted(versions):
         if any(test_version(ver, v) for v in versions):
             debug(f"Creating version {ver}:")
-            create_version(ver, config)
+            create_version(ver, settings)
 
 
-def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
+def create_solution(settings: configparser.SectionProxy) -> t.Set[str]:
     """Creates the solution version of the project by removing all task markers.
     During compilation all version numbers in task markers are collected and
     the set of version numbers is returned.
     """
     # initialize some local vars
-    srcdir = config.get(CONFIG_SECTION, "srcdir")
-    outdir = config.get(CONFIG_SECTION, "outdir")
-    name = config.get(CONFIG_SECTION, "name")
+    srcdir = settings["srcdir"]
+    outdir = settings["output dir"]
+    name = settings["name"]
 
     versions = set()
 
     # prepare output name
-    ver_name = config.get(CONFIG_SECTION, "name format").format(
+    ver_name = settings["name format"].format(
         project=name,
-        version=config.get(CONFIG_SECTION, "ml suffix"),
+        version=settings["ml suffix"],
         date=datetime.now(),
     )
     outdir = os.path.join(outdir, ver_name)
 
     # prepare output folders
-    if os.path.isdir(outdir) and config.getboolean(CONFIG_SECTION, "clear"):
+    if os.path.isdir(outdir) and settings.getboolean("clear"):
         shutil.rmtree(outdir)
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
     # extract some config options to local scope
-    include = config.getlist(CONFIG_SECTION, "include")  # type: ignore
-    exclude = config.getlist(CONFIG_SECTION, "exclude")  # type: ignore
-    encoding = config.get(CONFIG_SECTION, "encoding")
+    include = settings.getlist("include")  # type: ignore
+    exclude = settings.getlist("exclude")  # type: ignore
+    encoding = settings["encoding"]
 
-    tag_open = config.get(CONFIG_SECTION, "opening tag")
-    tag_close = config.get(CONFIG_SECTION, "closing tag")
-    ml_open = config.get(CONFIG_SECTION, "opening ml tag")
-    ml_close = config.get(CONFIG_SECTION, "closing ml tag")
+    tag_open = settings["opening tag"]
+    tag_close = settings["closing tag"]
+    ml_open = settings["opening ml tag"]
+    ml_close = settings["closing ml tag"]
 
-    keep_empty = config.getboolean(CONFIG_SECTION, "keep empty files")
+    keep_empty = settings.getboolean("keep empty files")
 
     # compile files
     debug(f"creating version {ver_name} in {outdir}", 1)
@@ -416,10 +417,7 @@ def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
             fullpath = os.path.join(root, file)
             fulloutpath = os.path.join(outroot, file)
 
-            _, ext = os.path.splitext(file)
-            ext = ext[1:]
-
-            if file == ".jml":
+            if file == CONFIG_FILE:
                 continue
             elif match_patterns(file, exclude):
                 debug(f"{file:>32} X", 2)
@@ -460,7 +458,7 @@ def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     # copy additional files
-    additional_files = config.getlist(CONFIG_SECTION, "additional files")  # type: ignore
+    additional_files = settings.getlist("additional files")  # type: ignore
     for file in additional_files:
         if file:
             file = resolve_path(file, srcdir)
@@ -469,12 +467,12 @@ def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
                 shutil.copy(file, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
-    if config.getboolean(CONFIG_SECTION, "delete ml"):
+    if settings.getboolean("delete ml"):
         shutil.rmtree(outdir)
         debug("removed compiled ml directory", 1)
-    elif config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
-        create_zip(outdir, config[CONFIG_SECTION])
-        if config.getboolean(CONFIG_SECTION, "create zip only"):
+    elif settings.getboolean("create zip") or settings.getboolean("create zip only"):
+        create_zip(outdir, settings)
+        if settings.getboolean("create zip only"):
             shutil.rmtree(outdir)
             debug("removed compiled ml directory", 1)
 
@@ -483,27 +481,27 @@ def create_solution(config: configparser.ConfigParser) -> t.Set[str]:
     return versions
 
 
-def create_version(version: str, config: configparser.ConfigParser) -> None:
+def create_version(version: str, settings: configparser.SectionProxy) -> None:
     """Creates a specific project version by removing all solution markers
     and checking task markers for applicable version numbers.
     """
     # initialize some local vars
-    srcdir = config.get(CONFIG_SECTION, "srcdir")
-    outdir = config.get(CONFIG_SECTION, "outdir")
-    name = config.get(CONFIG_SECTION, "name")
+    srcdir = settings["srcdir"]
+    outdir = settings["output dir"]
+    name = settings["name"]
 
     # prepare output name
     if version == "0":
         ver_name = name
     else:
-        ver_name = config.get(CONFIG_SECTION, "name format").format(
+        ver_name = settings["name format"].format(
             project=name, version=version, date=datetime.now()
         )
     outdir = os.path.join(outdir, ver_name)
 
     # prepare output folders
     if os.path.isdir(outdir):
-        if config.getboolean(CONFIG_SECTION, "clear"):
+        if settings.getboolean("clear"):
             shutil.rmtree(outdir)
             debug(f"removed target directory <{outdir}>", 1)
         else:
@@ -513,16 +511,16 @@ def create_version(version: str, config: configparser.ConfigParser) -> None:
         debug(f"created target directory <{outdir}>", 1)
 
     # extract some config options to local scope
-    include = config.getlist(CONFIG_SECTION, "include")  # type: ignore
-    exclude = config.getlist(CONFIG_SECTION, "exclude")  # type: ignore
-    encoding = config.get(CONFIG_SECTION, "encoding")
+    include = settings.getlist("include")  # type: ignore
+    exclude = settings.getlist("exclude")  # type: ignore
+    encoding = settings["encoding"]
 
-    tag_open = config.get(CONFIG_SECTION, "opening tag")
-    tag_close = config.get(CONFIG_SECTION, "closing tag")
-    ml_open = config.get(CONFIG_SECTION, "opening ml tag")
-    ml_close = config.get(CONFIG_SECTION, "closing ml tag")
+    tag_open = settings["opening tag"]
+    tag_close = settings["closing tag"]
+    ml_open = settings["opening ml tag"]
+    ml_close = settings["closing ml tag"]
 
-    keep_empty = config.getboolean(CONFIG_SECTION, "keep empty files")
+    keep_empty = settings.getboolean("keep empty files")
 
     # compile files in the srcdir
     debug(f"creating version {ver_name} in {outdir}", 1)
@@ -582,7 +580,7 @@ def create_version(version: str, config: configparser.ConfigParser) -> None:
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     # copy additional files
-    additional_files = config.getlist(CONFIG_SECTION, "additional files")  # type: ignore
+    additional_files = settings.getlist("additional files")  # type: ignore
     for file in additional_files:
         if file:
             file = resolve_path(file, srcdir)
@@ -592,9 +590,9 @@ def create_version(version: str, config: configparser.ConfigParser) -> None:
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     # Create zip file if option is set
-    if config.getboolean(CONFIG_SECTION, "create zip") or config.getboolean(CONFIG_SECTION, "create zip only"):
-        create_zip(outdir, config[CONFIG_SECTION])
-        if config.getboolean(CONFIG_SECTION, "create zip only"):
+    if settings.getboolean("create zip") or settings.getboolean("create zip only"):
+        create_zip(outdir, settings)
+        if settings.getboolean("create zip only"):
             shutil.rmtree(outdir)
             debug("removed compiled project version directory", 1)
 
@@ -627,6 +625,61 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
                     relpath = os.path.relpath(filepath, start=path)
                     zipf.write(filepath, arcname=relpath)
             debug(f"created zip file at <{outfile}>", 1)
+
+
+def resolve_path(path: str, base: str = None) -> str:
+    """If path is a relative path, it is resolved to an absolute
+    path by prefixing it with base. Otherwise it is returned as
+    realpath. If base is omitted, os.getcwd() is used. Then this
+    essentially replicates os.path.abspath()
+    """
+    if not os.path.isabs(path):
+        if not base:
+            base = os.getcwd()
+        path = os.path.normpath(os.path.join(base, path))
+    return os.path.realpath(path)
+
+
+def read_config(config: configparser.ConfigParser, config_file: str) -> bool:
+    if os.path.isfile(config_file):
+        try:
+            config.read(config_file)
+        except configparser.DuplicateOptionError as doe:
+            print(doe.message)
+            quit()
+        resolve_config(config, base=os.path.dirname(config_file))
+        return True
+    return False
+
+
+def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
+    for opt in ("output dir", "create zip dir", "project root"):
+        if config.has_option(CONFIG_SECTION, opt):
+            path = config.get(CONFIG_SECTION, opt)
+            if path:
+                config.set(CONFIG_SECTION, opt, resolve_path(path, base))
+
+    for opt in ("exclude", "include", "additional files"):
+        # get current list
+        value = set(config.getlist(CONFIG_SECTION, opt))  # type: ignore
+        # update list
+        if config.has_option(CONFIG_SECTION, f'+{opt}'):
+            add = config.getlist(CONFIG_SECTION, f'+{opt}')  # type: ignore
+            config.remove_option(CONFIG_SECTION, f'+{opt}')
+            value.update(add)
+        if config.has_option(CONFIG_SECTION, f'-{opt}'):
+            sub = config.getlist(CONFIG_SECTION, f'-{opt}')  # type: ignore
+            config.remove_option(CONFIG_SECTION, f'-{opt}')
+            value.difference_update(sub)
+        # write new list back to config
+        if opt == "additional files":
+            # resolve paths for additional files
+            new_value = set()
+            for path in value:
+                new_value.add(resolve_path(path, base))
+            config.set(CONFIG_SECTION, opt, ",".join(new_value))
+        else:
+            config.set(CONFIG_SECTION, opt, ",".join(value))
 
 
 def merge_configs(
@@ -667,19 +720,6 @@ def match_patterns(filename: str, patterns: t.List[str]) -> bool:
         if fnmatch.fnmatch(filename, p):
             return True
     return False
-
-
-def resolve_path(path: str, base: str = None) -> str:
-    """If path is a relative path, it is resolved to an absolute
-    path by prefixing it with base. Otherwise it is returned as
-    realpath. If base is omitted, os.getcwd() is used. Then this
-    essentially replicates os.path.abspath()
-    """
-    if not os.path.isabs(path):
-        if not base:
-            base = os.getcwd()
-        path = os.path.normpath(os.path.join(base, path))
-    return os.path.realpath(path)
 
 
 def test_version(version1: str, version2: str) -> bool:

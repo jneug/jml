@@ -4,3 +4,5 @@ closing tag=*aufgabe*/
 encoding = iso-8859-1
 name = Maeusekampf
 -include = *.txt
++additional files = FooBar.txt
+project root = ..
