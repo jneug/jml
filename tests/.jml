@@ -1,8 +1,13 @@
 [settings]
+output dir = out
 create zip = yes
+create zip dir = ./out/zip
 ml suffix = Loesung
 name format = {project}-{version}
 include = *.java,*.txt
++exclude = *.md
 # copied from ~/.jml
 opening ml tag=//<loesung>
 closing ml tag=//</loesung>
+additional files = ./.gitignore
+	FooBar.txt
