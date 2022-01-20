@@ -259,7 +259,9 @@ def main() -> None:
         proj_config.read(proj_config_file)
         debug(f"read config from source dir at <{proj_config_file}>")
         if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
-            project_root = resolve_path(proj_config.get(CONFIG_SECTION, "project root"), srcdir)
+            project_root = resolve_path(
+                proj_config.get(CONFIG_SECTION, "project root"), srcdir
+            )
 
     # build config for this run
     config = configparser.ConfigParser(
@@ -663,13 +665,13 @@ def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
         # get current list
         value = set(config.getlist(CONFIG_SECTION, opt))  # type: ignore
         # update list
-        if config.has_option(CONFIG_SECTION, f'+{opt}'):
-            add = config.getlist(CONFIG_SECTION, f'+{opt}')  # type: ignore
-            config.remove_option(CONFIG_SECTION, f'+{opt}')
+        if config.has_option(CONFIG_SECTION, f"+{opt}"):
+            add = config.getlist(CONFIG_SECTION, f"+{opt}")  # type: ignore
+            config.remove_option(CONFIG_SECTION, f"+{opt}")
             value.update(add)
-        if config.has_option(CONFIG_SECTION, f'-{opt}'):
-            sub = config.getlist(CONFIG_SECTION, f'-{opt}')  # type: ignore
-            config.remove_option(CONFIG_SECTION, f'-{opt}')
+        if config.has_option(CONFIG_SECTION, f"-{opt}"):
+            sub = config.getlist(CONFIG_SECTION, f"-{opt}")  # type: ignore
+            config.remove_option(CONFIG_SECTION, f"-{opt}")
             value.difference_update(sub)
         # write new list back to config
         if opt == "additional files":
