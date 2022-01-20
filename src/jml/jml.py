@@ -185,8 +185,10 @@ DEFAULT_CONFIG = {
     "name format": "{project}_{version}",
     "include": "*.java",
     "+include": "",
+    "-include": "",
     "exclude": "*.class,*.ctxt,.DS_Store,Thumbs.db,*.iml,.vscode,.eclipse",
     "+exclude": "",
+    "-exclude": "",
     "create zip": "no",
     "create zip only": "no",
     "create zip dir": "",
@@ -256,8 +258,8 @@ def main() -> None:
         interpolation=None, converters={"list": lambda v: re.split(r"[,;\n]+", v)}
     )
     # running list of patterns
-    excludes = set()
-    includes = set()
+    excludes = (set(), set())
+    includes = (set(), set())
     # set defaults
     config[CONFIG_SECTION] = DEFAULT_CONFIG
     settings = config[CONFIG_SECTION]
@@ -267,21 +269,27 @@ def main() -> None:
     if os.path.exists(user_config_file):
         config.read(user_config_file)
         debug(f"read config from user home at <{user_config_file}>")
-        excludes.update(settings.getlist("+exclude"))  # type: ignore
-        includes.update(settings.getlist("+include"))  # type: ignore
+        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
+        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
+        includes[0].update(settings.getlist("+include"))  # type: ignore
+        includes[1].update(settings.getlist("-include"))  # type: ignore
     # read project root config
     if project_root:
         root_config_file = os.path.join(project_root, CONFIG_FILE)
         if os.path.exists(root_config_file):
             config.read(root_config_file)
             debug(f"read config from project root at <{root_config_file}>")
-            excludes.update(settings.getlist("+exclude"))  # type: ignore
-            includes.update(settings.getlist("+include"))  # type: ignore
+        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
+        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
+        includes[0].update(settings.getlist("+include"))  # type: ignore
+        includes[1].update(settings.getlist("-include"))  # type: ignore
     # read project specific config
     if proj_config:
         config.read_dict(proj_config, source=proj_config_file)
-        excludes.update(settings.getlist("+exclude"))  # type: ignore
-        includes.update(settings.getlist("+include"))  # type: ignore
+        excludes[0].update(settings.getlist("+exclude"))  # type: ignore
+        excludes[1].update(settings.getlist("-exclude"))  # type: ignore
+        includes[0].update(settings.getlist("+include"))  # type: ignore
+        includes[1].update(settings.getlist("-include"))  # type: ignore
     # unset everything other than default keys
     for k in settings.keys():
         if k not in DEFAULT_CONFIG.keys():
@@ -299,12 +307,16 @@ def main() -> None:
         settings["name"] = os.path.basename(srcdir)
 
     # set include sets
-    excludes.update(settings.getlist("exclude"))  # type: ignore
-    includes.update(settings.getlist("include"))  # type: ignore
-    settings["exclude"] = ",".join(excludes)
-    settings["include"] = ",".join(includes)
+    excludes[0].update(settings.getlist("exclude"))  # type: ignore
+    includes[0].update(settings.getlist("include"))  # type: ignore
+    excludes[0].difference_update(excludes[1])  # type: ignore
+    includes[0].difference_update(includes[1])  # type: ignore
+    settings["exclude"] = ",".join(excludes[0])
+    settings["include"] = ",".join(includes[0])
     del settings["+exclude"]
     del settings["+include"]
+    del settings["-exclude"]
+    del settings["-include"]
 
     # show config for debugging
     if debug_flag:
