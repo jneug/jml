@@ -3,3 +3,4 @@ opening tag=/*aufgabe*
 closing tag=*aufgabe*/
 encoding = iso-8859-1
 name = Maeusekampf
+-include = *.txt
