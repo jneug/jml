@@ -188,6 +188,7 @@ parser.add_argument(
 
 RE_VERSION = re.compile(r"^\d+$")
 RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
+RE_REPLACE = re.compile(r"^(?<!\\)/(.*?)(?<!\\)/(.*)(?<!\\)/$")
 
 CONFIG_FILE = ".jml"
 CONFIG_SECTION = "settings"
@@ -363,7 +364,6 @@ def main() -> None:
 
     debug("Creating solution version:")
     versions = create_version(-1, settings)
-    print(versions)
     if max(versions) > 0:
         versions = {v + 1 for v in range(max(versions))}
 
@@ -424,11 +424,12 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
     tag_open = settings["task open"]
     tag_close = settings["task close"]
-    task_replace = lambda l: l
+    task_replace = lambda l: l  # noqa: E731
     if settings["task comment prefix"]:
-        if settings["task comment prefix"].startswith("/"):
-            tpat, trepl, _ = re.split(r"(?<!\\)\/", settings["task comment prefix"][1:], 2)
-            tpat, trepl = re.compile(tpat.replace("\/", "/")), trepl.replace("\/", "/")
+        m = RE_REPLACE.match(settings["task comment prefix"])
+        if m:
+            tpat, trepl = m.group(1), m.group(2)
+            tpat, trepl = re.compile(tpat.replace("\\/", "/")), trepl.replace("\\/", "/")
 
             def task_replace(line):
                 return re.sub(tpat, trepl, line)
@@ -441,11 +442,11 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
     ml_open = settings["solution open"]
     ml_close = settings["solution close"]
-    ml_replace = lambda l: l
+    ml_replace = lambda l: l  # noqa: E731
     if settings["solution comment prefix"]:
         if settings["solution comment prefix"].startswith("\\"):
             spat, srepl, _ = re.split(r"(?<!\\)\/", settings["solution comment prefix"][1:], 2)
-            spat, srepl = re.compile(spat), srepl.replace("\/", "/")
+            spat, srepl = re.compile(spat.replace("\\/", "/")), srepl.replace("\\/", "/")
 
             def ml_replace(line):
                 return re.sub(spat, srepl, line)
@@ -454,7 +455,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
             def ml_replace(line):
                 # return re.sub(spat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
-                return re.sub(tpat, "\1", line)
+                return re.sub(tpat, "\\1", line)
 
     keep_empty_files = settings.getboolean("keep empty files")
 
