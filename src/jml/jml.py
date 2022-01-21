@@ -363,7 +363,9 @@ def main() -> None:
 
     debug("Creating solution version:")
     versions = create_version(-1, settings)
-    versions = {v + 1 for v in range(max(versions))}
+    print(versions)
+    if max(versions) > 0:
+        versions = {v + 1 for v in range(max(versions))}
 
     if args.versions:
         versions = {int(v) for v in args.versions if int(v) in versions}
@@ -422,33 +424,37 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
     tag_open = settings["task open"]
     tag_close = settings["task close"]
-    task_replace = None
-    if settings["task comment prefix"].startswith("/"):
-        tpat, trepl, _ = re.split(r"(?<!\\)\/", settings["task comment prefix"][1:], 2)
-        tpat, trepl = re.compile(tpat.replace("\/", "/")), trepl.replace("\/", "/")
+    task_replace = lambda l: l
+    if settings["task comment prefix"]:
+        if settings["task comment prefix"].startswith("/"):
+            tpat, trepl, _ = re.split(r"(?<!\\)\/", settings["task comment prefix"][1:], 2)
+            tpat, trepl = re.compile(tpat.replace("\/", "/")), trepl.replace("\/", "/")
 
-        def task_replace(line):
-            return re.sub(tpat, trepl, line)
-    else:
-        tpat = re.compile(f"^(\\s*)({settings['task comment prefix']})")
+            def task_replace(line):
+                return re.sub(tpat, trepl, line)
+        else:
+            tpat = re.compile(f"^(\\s*)({settings['task comment prefix']})")
 
-        def task_replace(line):
-            return re.sub(tpat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
+            def task_replace(line):
+                # return re.sub(tpat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
+                return re.sub(tpat, "\\1", line)
 
     ml_open = settings["solution open"]
     ml_close = settings["solution close"]
-    ml_replace = None
-    if settings["solution comment prefix"].startswith("\\"):
-        spat, srepl, _ = re.split(r"(?<!\\)\/", settings["solution comment prefix"][1:], 2)
-        spat, srepl = re.compile(spat), srepl.replace("\/", "/")
+    ml_replace = lambda l: l
+    if settings["solution comment prefix"]:
+        if settings["solution comment prefix"].startswith("\\"):
+            spat, srepl, _ = re.split(r"(?<!\\)\/", settings["solution comment prefix"][1:], 2)
+            spat, srepl = re.compile(spat), srepl.replace("\/", "/")
 
-        def ml_replace(line):
-            return re.sub(spat, srepl, line)
-    else:
-        spat = re.compile(f"^(\\s*)({settings['solution comment prefix']})")
+            def ml_replace(line):
+                return re.sub(spat, srepl, line)
+        else:
+            spat = re.compile(f"^(\\s*)({settings['solution comment prefix']})")
 
-        def ml_replace(line):
-            return re.sub(spat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
+            def ml_replace(line):
+                # return re.sub(spat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
+                return re.sub(tpat, "\1", line)
 
     keep_empty_files = settings.getboolean("keep empty files")
 
