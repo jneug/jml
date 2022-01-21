@@ -1,6 +1,7 @@
 [settings]
-opening tag=/*aufgabe*
-closing tag=*aufgabe*/
+task open=/*aufgabe*
+task close=*aufgabe*/
+task comment prefix = /\/\/ TODO: /\/\/ Aufgabe: /
 encoding = iso-8859-1
 name = Maeusekampf
 -include = *.txt
