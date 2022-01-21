@@ -49,17 +49,17 @@ Benutzung
 
 .. code-block:: console
 
-   $ jml pfad/zum/ProjektOrdner --out pfad/zum/ausgabeordner
+   $ jml pfad/zum/Basisprojekt --out pfad/zum/ausgabeordner
 
 Nach Ausführung befinden sich in ``pfad/zum/ausgabeordner`` die Musterlösung und die Projektversionen.
 
-Die Inhalte und Anzahl an Versionen werden durch die Inhalte der Dateien im Projektordner bestimmt.
+Die Inhalte und Anzahl an Versionen werden durch die Inhalte der Dateien im Basisprojekt bestimmt.
 
-Angenommen in ``ProjektOrdner`` liegt eine Datei mit dem Namen ``Beispiel.java`` mit folgendem Inhalt:
+Angenommen in ``Basisprojekt`` liegt eine Datei mit dem Namen ``Beispiel.java`` mit folgendem Inhalt:
 
 .. code-block:: java
 
-    class Example {
+    class Beispiel {
         /*aufg*
         // TODO: Erstelle eine Objektvariable "zahl" vom Typ int
         *aufg*/
@@ -81,16 +81,16 @@ Angenommen in ``ProjektOrdner`` liegt eine Datei mit dem Namen ``Beispiel.java``
 Dann erzeugt ``jml`` diese Ordnerstruktur in ``pfad/zum/ausgabeordner``::
 
     pfad/zum/ausgabeordner/
-    ├── ProjektOrdner/
+    ├── Basisprojekt/
     │   └── Beispiel.java
-    └── ProjektOrdner_ML/
+    └── Basisprojekt_ML/
         └── Beispiel.java
 
-Inhalt von ``ProjektOrdner_ML/Beispiel.java``:
+Inhalt von ``Basisprojekt_ML/Beispiel.java``:
 
 .. code-block:: java
 
-    class Example {
+    class Beispiel {
         private int zahl;
 
         public int add( int pAndereZahl ) {
@@ -98,11 +98,11 @@ Inhalt von ``ProjektOrdner_ML/Beispiel.java``:
         }
     }
 
-Inhalt von ``ProjektOrdner/Beispiel.java``:
+Inhalt von ``Basisprojekt/Beispiel.java``:
 
 .. code-block:: java
 
-    class Example {
+    class Beispiel {
         // TODO: Erstelle eine Objektvariable "zahl" vom Typ int
 
         public int add( int pAndereZahl ) {
@@ -121,7 +121,7 @@ Angenommen die ``Beispiel.java`` von oben sieht so aus:
 
 .. code-block:: java
 
-    class Example {
+    class Beispiel {
         /*aufg*
         // TODO: Erstelle eine Objektvariable "zahl" vom Typ int
         *aufg*/
@@ -148,14 +148,14 @@ Angenommen die ``Beispiel.java`` von oben sieht so aus:
 
     }
 
-Dann wird werden statt der Version ``0`` die Projektversionen ``1`` und ``2`` erzeugt, da im zweiten Aufgaben-Marker eine konkrete Versionsnummer angegeben wurde::
+Dann werden statt der Version ``0`` die Projektversionen ``1`` und ``2`` erzeugt, da im zweiten Aufgaben-Marker eine konkrete Versionsnummer angegeben wurde::
 
     pfad/zum/ausgabeordner/
-    ├── ProjektOrdner_1/
+    ├── Basisprojekt_1/
     │   └── Beispiel.java
-    ├── ProjektOrdner_2/
+    ├── Basisprojekt_2/
     │   └── Beispiel.java
-    └── ProjektOrdner_ML/
+    └── Basisprojekt_ML/
         └── Beispiel.java
 
 Es ist auch möglich eine Markierung für mehrere Projektversionen zu nutzen:
@@ -170,7 +170,7 @@ Es ist auch möglich eine Markierung für mehrere Projektversionen zu nutzen:
     // Taucht in allen Projektversionen außer 2 auf.
     *aufg*/
 
-    /*aufg* <= 2
+    /*aufg* <=2
     // Taucht nur in Projektversionen 1 und 2 auf.
     *aufg*/
 
@@ -194,9 +194,9 @@ Für das Beispiel oben könnte der Aufbau so aussehen::
 
     ~/
     ├── .jml
-    ├── pfad/zur/gruppe/
+    ├── pfad/zur/wurzel/
     │   ├── .jml
-    │   └── ProjektOrdner/
+    │   └── Basisprojekt/
     │       ├── .jml
     │       └── Beispiel.java
     └── pfad/zum/ausgabeordner
@@ -211,7 +211,7 @@ Inhalt von ``~/.jml``:
    opening ml tag=//<loesung>
    closing ml tag=//</loesung>
 
-Inhalt von ``~/pfad/zur/gruppe/.jml``:
+Inhalt von ``~/pfad/zur/wurzel/.jml``:
 
 .. code-block:: ini
 
@@ -221,7 +221,7 @@ Inhalt von ``~/pfad/zur/gruppe/.jml``:
    name format = {project}-{version}
    include = *.java,*.txt
 
-Inhalt von ``~/pfad/zur/gruppe/ProjektOrdner/.jml``:
+Inhalt von ``~/pfad/zur/wurzel/Basisprojekt/.jml``:
 
 .. code-block:: ini
 
@@ -235,21 +235,21 @@ Der Aufruf von ``jml`` sieht dann so aus:
 
 .. code-block:: console
 
-   $ jml --project-root "~/pfad/zur/gruppe" "~/pfad/zur/gruppe/ProjektOrdner"  --out "pfad/zum/ausgabeordner"
+   $ jml --project-root "~/pfad/zur/wurzel" "~/pfad/zur/wurzel/Basisprojekt"  --out "pfad/zum/ausgabeordner"
 
 ``jml`` lädt nun zunächst ``~/.jml`` und setzt die Start- und Endmarkierungen auf eine XML-Variante.
 
-Danach wird ``~/pfad/zur/gruppe/.jml`` geladen, da dies per ``--project-root`` Argument als Gruppenverzeichnis gesetzt wurde. Für diese Projektgruppe werden ZIP-Dateien der Projektversionen erzeugt, außerdem wird das Suffix für die Musterlösung von ``ML`` auf ``Loesung`` geändert. Das Format der Projektnamen wird angepasst (``_`` durch ``-`` ersetzt) und es werden auch ``.txt`` Dateien nach den Aufgaben- und Lösungs-Markierungen durchsucht.
+Danach wird ``~/pfad/zur/wurzel/.jml`` geladen, da dies per ``--project-root`` Argument als Wurzelverzeichnis gesetzt wurde. Für diese Projektgruppe werden ZIP-Dateien der Projektversionen erzeugt, außerdem wird das Suffix für die Musterlösung von ``ML`` auf ``Loesung`` geändert. Das Format der Projektnamen wird angepasst (``_`` durch ``-`` ersetzt) und es werden auch ``.txt`` Dateien nach den Aufgaben- und Lösungs-Markierungen durchsucht.
 
-Als drittes wird ``~/pfad/zur/gruppe/ProjektOrdner/.jml`` geladen. Hier werden speziell für dieses eine Projekt die Aufgaben-Marker erneut verändert und die Datei-Codierung auf ``iso-8859-1`` (statt ``utf-8``) festgelegt. Schließlich wird noch der Projektname auf ``Maeusekampf`` festgelgt, anstatt den Ordnernamen ``ProjektOrdner`` zu verwenden.
+Als drittes wird ``~/pfad/zur/wurzel/Basisprojekt/.jml`` geladen. Hier werden speziell für dieses eine Projekt die Aufgaben-Marker erneut verändert und die Datei-Codierung auf ``iso-8859-1`` (statt ``utf-8``) festgelegt. Schließlich wird noch der Projektname auf ``Maeusekampf`` festgelgt, anstatt den Ordnernamen ``Basisprojekt`` zu verwenden.
 
 Die Ausgabe sieht dann so aus (sofern die Aufgaben- und Lösungs-Markierungen in ``Beispiel.java`` angepasst wurden)::
 
     ~/
     ├── .jml
-    ├── pfad/zur/gruppe/
+    ├── pfad/zur/wurzel/
     │   ├── .jml
-    │   └── ProjektOrdner/
+    │   └── Basisprojekt/
     │       ├── .jml
     │       └── Beispiel.java
     └── pfad/zum/ausgabeordner/
@@ -266,7 +266,7 @@ Die Ausgabe sieht dann so aus (sofern die Aufgaben- und Lösungs-Markierungen in
 Liste der Optionen
 ^^^^^^^^^^^^^^^^^^
 
-Die Tabelle zeigt eine Übersicht aller Optionen, die in einer Konfigurationsdatei gesetzt werden können und der dazugehörigen Kommandozeilen-Argumente.
+Die Tabelle zeigt eine Übersicht aller Optionen, die in einer Konfigurationsdatei oder per Kommandozeilen-Argument gesetzt werden können.
 
 +---------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Optionsname in Konfigurationsdateien  | Kommandozeilen-Argument                                                                                                                                                 | Beschreibung                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -329,7 +329,7 @@ Die Tabelle zeigt eine Übersicht aller Optionen, die in einer Konfigurationsdat
 Beispiele
 ^^^^^^^^^
 
-Das folgende Beispiel kopiert die ``.class`` Dateien mit in die Projektversionen und ignoriert dafür einige der ``.java`` Quelltexte. Dies kann sinnvoll sein, wenn das Projekt einige vordefinierte Klassen enthält (zum Beispiel eine fertige GUI), die von den Schüler:innen aber nicht bearbeitet werden sollen.
+Das folgende Beispiel kopiert die ``.class`` Dateien mit in die Projektversionen und ignoriert dafür einige ausgewählte ``.java`` Quelltexte. Dies kann sinnvoll sein, wenn das Projekt einige vordefinierte Klassen enthält (zum Beispiel eine fertige GUI), die von den Schüler:innen aber nicht bearbeitet werden sollen.
 
 .. code-block:: text
 
@@ -339,7 +339,7 @@ Das folgende Beispiel kopiert die ``.class`` Dateien mit in die Projektversionen
     │   ├── files/
     │   │   ├── .gitignore
     │   │   └── package.bluej
-    │   └── ProjektOrdner/
+    │   └── Basisprojekt/
     │       └── .jml
     └── ausgabe/ordner
 
@@ -358,7 +358,7 @@ Inhalt von ``~/wurzel/verzeichnis/.jml``:
     additional files = ~/wurzel/verzeichnis/files/.gitignore,
         ~/wurzel/verzeichnis/files/package.bluej
 
-Inhalt von ``~/wurzel/verzeichnis/ProjektOrdner.jml``:
+Inhalt von ``~/wurzel/verzeichnis/Basisprojekt/.jml``:
 
 .. code-block:: ini
 
@@ -367,7 +367,7 @@ Inhalt von ``~/wurzel/verzeichnis/ProjektOrdner.jml``:
     -exclude = *.class
 
 
-Mit diesen Einstellungen kann ``jml`` zum Beispiel mit auch für ein HTML-prjekt genutzt werden:
+Mit diesen Einstellungen kann ``jml`` zum Beispiel mit auch für ein HTML-Projekt genutzt werden:
 
 .. code-block:: text
 
@@ -376,12 +376,12 @@ Mit diesen Einstellungen kann ``jml`` zum Beispiel mit auch für ein HTML-prjekt
     │   ├── files/
     │   │   ├── .gitignore
     │   │   └── package.bluej
-    │   └── ProjektOrdner/
+    │   └── Basisprojekt/
     │   │   ├── .jml
     │       └── index.html
     └── ausgabe/ordner
 
-Inhalt von ``~/wurzel/verzeichnis/ProjektOrdner/.jml``:
+Inhalt von ``~/wurzel/verzeichnis/Basisprojekt/.jml``:
 
 .. code-block:: ini
 
