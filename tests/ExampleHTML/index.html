@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+
+	<!--aufg
+	<title>Gib hier deinen Titel ein</title>
+	/aufg-->
+	<!--ml-->
+	<title>J. Neugebauer</title>
+	<!--/ml-->
+
+	<!--aufg
+	<style type="text/css">
+		body {
+			background-color: rgb(132, 163, 211);
+		}
+		/* Ergänze hier deine CSS-Stile */
+	</style>
+	aufg-->
+	<!--ml-->
+	<style type="text/css">
+	body {
+		background-color: rgb(132, 163, 211);
+	}
+
+	h1, h2, th {
+		font-family: Georgia, Times, serif;
+		color: rgb(46, 46, 46);
+	}
+	th {
+		text-align: left;
+	}
+	table, ul, .arbeit {
+		width: 60%;
+		min-width: 300px;
+		margin: 0 auto;
+	}
+	h1, h2,.bio, .arbeit, .links, .bild {
+		text-align: center;
+		margin-bottom: 20px;
+	}
+	h1 {
+		font-size: 36pt;
+	}
+	ul {
+		list-style-position: inside;
+	}
+	.video {
+		width: 560px;
+		margin: 0 auto;
+	}
+	.video, .video iframe {
+		border-radius: 8px;
+	}
+	.bio, .arbeit, .links, .bild, td, li {
+		font-family: Helvetica Neue, Helvetica, Arial, sans;
+		font-size: 13pt;
+		color: rgb(46, 46, 46);
+	}
+	.bild img {    vertical-align: middle;
+	    border-radius: 50%;
+	    border: 3px double #2e2e2e;
+	    padding: 6px;
+	}
+	a:link, a:visited {
+    	text-decoration: underline;
+    	outline: 0;
+		color: rgb(46, 46, 46);
+    }
+    a:hover {
+    	text-decoration: none;
+		color: rgb(46, 46, 46);
+    }
+    .well {
+    	border-radius: 8px;
+    	padding: 8px;
+    	background: rgba(255,255,255,0.25);
+    }
+	</style>
+	<!--/ml-->
+
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+</head>
+<body>
+
+<div class="back">
+<a href="index.html">Zurück</a>
+</div>
+
+<!--aufg
+<p>Erstelle hier einen Steckbrief von dir mit den aus dem Unterricht bekannten HTML-Elementen.</p>
+
+<p>Ergänze auf jeden Fall:
+	<ul>
+		<li>Überschriften</li>
+		<li>Listen</li>
+		<li>Mindestens ein Bild</li>
+		<li>Mindestens eine Tabelle</li>
+	</ul>
+</p>
+aufg-->
+<!--ml-->
+<div class="bild">
+<img src="bilder/ngb.png">
+</div>
+<h1>Jonas Neugebauer</h1>
+<div class="bio">
+<a href="https://ngb.schule"><i class="fas fa-school"></i> Lehrer</a> • <a href="http://papamachtdas.de/"><i class="fas fa-child"></i> Vater</a> •
+<a href="http://www.trueachievements.com/DerGimli.htm"><i class="fas fa-gamepad"></i> Geek</a>
+</div>
+
+<div class="arbeit well">
+<a href="http://www.helmholtz-bi.de">Helmholtz-Gymnasium Bielefeld</a><br/>
+Informatik | Mathematik
+</div>
+
+<div class="links">
+<a href="http://informatik-box.de"><i class="fab fa-codepen"></i> Informatik-Box</a> •  <a href="https://neugebauer.cc"><i class="fas fa-cloud"></i> Gedanken-Box</a> • <a href="http://zitatebox.tumblr.com/"><i class="fas fa-quote-right"></i> Zitate-Box</a>
+</div>
+
+<h2>Profil</h2>
+<table class="table well">
+  <tbody>
+    <tr>
+      <th>Name</th>
+      <td><a href="https://de.wikipedia.org/wiki/Jonas">Jonas</a> Neugebauer</td>
+    </tr>
+    <tr>
+      <th>Geburtstag</th>
+      <td><a href="https://de.wikipedia.org/wiki/28._September">28.09.1983</a></td>
+    </tr>
+    <tr>
+      <th>Geburts- &amp; Wohnort</th>
+      <td><a href="http://www.bielefeldverschwoerung.de">Bielefeld</a>, Deutschland</td>
+    </tr>
+    <tr>
+      <th>E-Mail</th>
+      <td><a href="mailto:schule@neugebauer.cc">schule@neugebauer.cc</a></td>
+    </tr>
+    <tr>
+      <th>Web</th>
+      <td><a href="http://jonas-neugebauer.de">jonas-neugebauer.de</a></td>
+    </tr>
+    <tr>
+      <th>Blog</th>
+      <td><a href="https://neugebauer.cc">neugebauer.cc</a></td>
+    </tr>
+    <tr>
+      <th>Wiki</th>
+      <td><a href="https://ngb.schule/wiki">ngb.schule</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Erfahrungen</h2>
+<ul class="well">
+  <li>Kompetenzforschung (Projekt MoKoM)</li>
+  <li>Lehreraus- und weiterbildung (Workshops, Vorträge)</li>
+  <li>Projektleitung (Leitung studentischer Softwareprojekte)</li>
+  <li>Sofwareentwicklung (Java, HTML5/CSS3, Javascript, Node.js, Python, PHP)</li>
+</ul>
+
+<h2>BI Happy</h2>
+<div class="video">
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/cpSZpboD8kw?rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+<!--/ml-->
+
+</body>
+</html>

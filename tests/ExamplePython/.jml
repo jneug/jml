@@ -1,0 +1,7 @@
+[settings]
+task open=#<aufgabe>
+task close=#</aufgabe>
+task comment prefix=#
+solution open=#<ml>
+solution close=#</ml>
+include=*.py

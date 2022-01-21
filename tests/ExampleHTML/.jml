@@ -1,0 +1,6 @@
+[settings]
+task open=<!--aufg
+task close=/aufg-->
+solution open=<!--ml-->
+solution close=<!--/ml-->
+-include = *.html,*.htm
