@@ -198,7 +198,7 @@ DEFAULT_CONFIG = {
     "task close": "*aufg*/",
     "task comment prefix": "",
     "solution open": "//ml*",
-    "solution close ml tag": "//*ml",
+    "solution close": "//*ml",
     "solution comment prefix": "",
     "solution suffix": "ML",
     "name format": "{project}_{version}",
@@ -366,7 +366,7 @@ def main() -> None:
     versions = {v + 1 for v in range(max(versions))}
 
     if args.versions:
-        versions = {int(v) for v in args.versions if v in versions}
+        versions = {int(v) for v in args.versions if int(v) in versions}
     for ver in sorted(versions):
         debug(f"Creating version {ver}:")
         create_version(ver, settings)
@@ -422,12 +422,33 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
     tag_open = settings["task open"]
     tag_close = settings["task close"]
-    task_prefix = settings["task comment prefix"]
-    task_pattern = re.compile(f"^(\s*)({task_prefix})")
+    task_replace = None
+    if settings["task comment prefix"].startswith("/"):
+        tpat, trepl, _ = re.split(r"(?<!\\)\/", settings["task comment prefix"][1:], 2)
+        tpat, trepl = re.compile(tpat.replace("\/", "/")), trepl.replace("\/", "/")
+
+        def task_replace(line):
+            return re.sub(tpat, trepl, line)
+    else:
+        tpat = re.compile(f"^(\\s*)({settings['task comment prefix']})")
+
+        def task_replace(line):
+            return re.sub(tpat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
+
     ml_open = settings["solution open"]
     ml_close = settings["solution close"]
-    ml_prefix = settings["solution comment prefix"]
-    ml_pattern = re.compile(f"^(\s*)({task_prefix})")
+    ml_replace = None
+    if settings["solution comment prefix"].startswith("\\"):
+        spat, srepl, _ = re.split(r"(?<!\\)\/", settings["solution comment prefix"][1:], 2)
+        spat, srepl = re.compile(spat), srepl.replace("\/", "/")
+
+        def ml_replace(line):
+            return re.sub(spat, srepl, line)
+    else:
+        spat = re.compile(f"^(\\s*)({settings['solution comment prefix']})")
+
+        def ml_replace(line):
+            return re.sub(spat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
 
     keep_empty_files = settings.getboolean("keep empty files")
 
@@ -455,7 +476,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                 with open(fullpath, "r", encoding=encoding) as inf:
                     with open(fulloutpath, "w", encoding=encoding) as outf:
                         skip = False
-                        pattern = None
+                        transform = None
                         line = inf.readline()
                         # if encoding != 'utf-8':
                         #   line = line.decode(encoding).encode()
@@ -465,10 +486,10 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                 tag_close
                             ):
                                 skip = False
-                                pattern = None
+                                transform = None
                             elif lline.startswith(ml_open):
                                 skip = not is_ml
-                                pattern = ml_pattern
+                                transform = ml_replace
                             elif lline.startswith(tag_open):
                                 parts = lline.split()
                                 if len(parts) > 1:
@@ -481,12 +502,12 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                         skip = not test_version(version, parts[1])
                                 else:
                                     skip = is_ml
-                                pattern = task_pattern
+                                transform = task_replace
                             elif skip:
                                 pass
                             else:
-															if pattern:
-																line = re.replace(pattern, lambda m: f"{m.group(0)}{' '*len(m.group(2))}", line)
+                                if transform:
+                                    line = transform(line)
                                 outf.write(line)
                                 is_empty = is_empty or len(line.strip()) > 0
                             line = inf.readline()
