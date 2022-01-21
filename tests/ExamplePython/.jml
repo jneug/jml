@@ -1,6 +1,6 @@
 [settings]
-task open=#<aufgabe>
-task close=#</aufgabe>
+task open=#<aufg>
+task close=#</aufg>
 task comment prefix=#
 solution open=#<ml>
 solution close=#</ml>
