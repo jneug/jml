@@ -81,35 +81,35 @@ parser.add_argument(
 parser.add_argument(
     "-mls",
     "--ml-suffix",
-    dest="ml suffix",
+    dest="solution suffix",
     action="store",
     help="Suffix für die Musterlösung. Standard: ML",
 )
 parser.add_argument(
     "-to",
     "--tag-open",
-    dest="opening tag",
+    dest="task open",
     action="store",
     help="Öffnende Aufgaben-Markierung.Standard: /*aufg*",
 )
 parser.add_argument(
     "-tc",
     "--tag-close",
-    dest="closing tag",
+    dest="task close",
     action="store",
     help="Schließende Aufgaben-Markierung. Standard: *aufg*/",
 )
 parser.add_argument(
     "-mlo",
     "--ml-open",
-    dest="opening ml tag",
+    dest="solution open",
     action="store",
     help="Öffnende Lösungs-Markierung. Standard: //ml*",
 )
 parser.add_argument(
     "-mlc",
     "--ml-close",
-    dest="closing ml tag",
+    dest="solution close",
     action="store",
     help="Schließende Lösungs-Markierung. Standard: //*ml",
 )
@@ -172,7 +172,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--no-ml",
-    dest="delete ml",
+    dest="delete solution",
     action="store_true",
     default=False,
     help="Keinen Musterlösung erstellen. Beachte, dass die Musterlösung immer erstellt wird, um die zu erstellenden Projektversionen zu ermitteln. Diese Option löscht den Ordner am Ende wieder.",
@@ -194,11 +194,13 @@ CONFIG_SECTION = "settings"
 DEFAULT_CONFIG = {
     "name": "",
     "output dir": "",
-    "opening tag": "/*aufg*",
-    "closing tag": "*aufg*/",
-    "opening ml tag": "//ml*",
-    "closing ml tag": "//*ml",
-    "ml suffix": "ML",
+    "task open": "/*aufg*",
+    "task close": "*aufg*/",
+    "task comment prefix": "",
+    "solution open": "//ml*",
+    "solution close ml tag": "//*ml",
+    "solution comment prefix": "",
+    "solution suffix": "ML",
     "name format": "{project}_{version}",
     "include": "*.java",
     "+include": "",
@@ -215,7 +217,7 @@ DEFAULT_CONFIG = {
     "-additional files": "",
     "project root": "",
     "clear": "yes",
-    "delete ml": "no",
+    "delete solution": "no",
     "keep empty files": "yes",
     "keep empty folders": "yes",
 }
@@ -297,7 +299,7 @@ def main() -> None:
         flags={
             "keep empty files": False,
             "create zip": True,
-            "delete ml": True,
+            "delete solution": True,
             "clear": False,
         },
     )
@@ -313,28 +315,28 @@ def main() -> None:
             debug(f"{k} = {v}", 1)
 
     # check tag options for incompatibilities
-    if settings["opening tag"] == settings["closing tag"]:
+    if settings["task open"] == settings["task close"]:
         print(
             "Die öffnenden und schließenden Tags für Aufgaben müssen unterschiedlich sein."
         )
         print("  Bitte setze einzigartige Tags. Z.B. @jml und lmj@")
         print(
             "  Aktuell angegeben: {} / {}".format(
-                settings["opening tag"],
-                settings["closing tag"],
+                settings["task open"],
+                settings["task close"],
             )
         )
         quit()
 
-    if settings["opening ml tag"] == settings["closing ml tag"]:
+    if settings["solution open"] == settings["solution close"]:
         print(
             "Die öffnenden und schließenden Tags für Musterlösungen müssen unterschiedlich sein."
         )
         print("  Bitte setze einzigartige Tags. Z.B. @jml und lmj@")
         print(
             "  Aktuell angegeben: {} / {}".format(
-                settings["opening ml tag"],
-                settings["closing ml tag"],
+                settings["solution open"],
+                settings["solution close"],
             )
         )
         quit()
@@ -391,7 +393,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     if is_ml:
         ver_name = settings["name format"].format(
             project=name,
-            version=settings["ml suffix"],
+            version=settings["solution suffix"],
             date=datetime.now(),
         )
     elif version == 0:
@@ -418,10 +420,14 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     exclude = settings.getlist("exclude")  # type: ignore
     encoding = settings["encoding"]
 
-    tag_open = settings["opening tag"]
-    tag_close = settings["closing tag"]
-    ml_open = settings["opening ml tag"]
-    ml_close = settings["closing ml tag"]
+    tag_open = settings["task open"]
+    tag_close = settings["task close"]
+    task_prefix = settings["task comment prefix"]
+    task_pattern = re.compile(f"^(\s*)({task_prefix})")
+    ml_open = settings["solution open"]
+    ml_close = settings["solution close"]
+    ml_prefix = settings["solution comment prefix"]
+    ml_pattern = re.compile(f"^(\s*)({task_prefix})")
 
     keep_empty_files = settings.getboolean("keep empty files")
 
@@ -449,6 +455,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                 with open(fullpath, "r", encoding=encoding) as inf:
                     with open(fulloutpath, "w", encoding=encoding) as outf:
                         skip = False
+                        pattern = None
                         line = inf.readline()
                         # if encoding != 'utf-8':
                         #   line = line.decode(encoding).encode()
@@ -458,8 +465,10 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                 tag_close
                             ):
                                 skip = False
+                                pattern = None
                             elif lline.startswith(ml_open):
                                 skip = not is_ml
+                                pattern = ml_pattern
                             elif lline.startswith(tag_open):
                                 parts = lline.split()
                                 if len(parts) > 1:
@@ -472,9 +481,12 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                         skip = not test_version(version, parts[1])
                                 else:
                                     skip = is_ml
+                                pattern = task_pattern
                             elif skip:
                                 pass
                             else:
+															if pattern:
+																line = re.replace(pattern, lambda m: f"{m.group(0)}{' '*len(m.group(2))}", line)
                                 outf.write(line)
                                 is_empty = is_empty or len(line.strip()) > 0
                             line = inf.readline()
@@ -496,7 +508,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                 shutil.copy(file, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
-    if is_ml and settings.getboolean("delete ml"):
+    if is_ml and settings.getboolean("delete solution"):
         shutil.rmtree(outdir)
         debug("removed compiled ml directory", 1)
     elif settings.getboolean("create zip") or settings.getboolean("create zip only"):
