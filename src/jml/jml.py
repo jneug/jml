@@ -12,7 +12,7 @@ import typing as t
 import zipfile
 from datetime import datetime
 
-__version__ = "0.2.7"
+__version__ = "0.2.9"
 
 
 class JMLHelpFormatter(argparse.HelpFormatter):

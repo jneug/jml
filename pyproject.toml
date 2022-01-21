@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jml"
-version = "0.2.7"
+version = "0.2.9"
 description = "Ein Tool um Projektversionen zu generieren"
 authors = ["J. Neugebauer <ngb@helmholtz-bi.de>"]
 license = "MIT"
@@ -40,7 +40,7 @@ profile = "black"
 github_url = "https://github.com/jneug/jml/"
 
 [tool.tbump.version]
-current = "0.2.7"
+current = "0.2.9"
 regex = '''
   (?P<major>\d+)
   \.
