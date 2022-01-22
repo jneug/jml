@@ -15,7 +15,7 @@ from datetime import datetime
 
 
 # Current version number
-__version__ = "0.2.10"
+__version__ = "0.3.0"
 
 
 # Some constants
