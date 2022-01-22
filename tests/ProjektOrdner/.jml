@@ -2,6 +2,7 @@
 task open=/*aufgabe*
 task close=*aufgabe*/
 task comment prefix = /\/\/ TODO: /\/\/ Aufgabe: /
+solution comment prefix = return
 encoding = iso-8859-1
 name = Maeusekampf
 -include = *.txt

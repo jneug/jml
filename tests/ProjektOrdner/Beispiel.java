@@ -1,4 +1,4 @@
-class Example {
+class Beispiel {
     /*aufgabe*
     // TODO: Erstelle eine Objektvariable "zahl" vom Typ int
     *aufgabe*/
@@ -15,8 +15,8 @@ class Example {
         return zahl + pAndereZahl;
         //</loesung>
     }
-
     /*aufgabe* 2
+
     public int sub( int pAndereZahl ) {
         // TODO: Gib die Differenz aus der Objektvariablen "zahl" und "pSummand" zurück.
         return 0;
