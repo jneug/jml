@@ -4,6 +4,7 @@
 import argparse
 import configparser
 import fnmatch
+import io
 import os
 import re
 import shutil
@@ -58,7 +59,7 @@ DEFAULT_CONFIG = {
 }
 
 DEBUG_FLAG = False
-# DRY_RUN = False
+DRY_RUN = False
 
 
 # Initialize argument parser
@@ -222,12 +223,12 @@ parser.add_argument(
     action="store_true",
     help="Zeigt Informationen zur Fehlersuche an.",
 )
-# parser.add_argument(
-#     "--dry-run",
-#     dest="dry_run",
-#     action="store_true",
-#     help="Führt keine Operationen aus, sondern zeigt nur an, welche Änderungen vorgenommen würden. Impliziert --debug.",
-# )
+parser.add_argument(
+    "--dry-run",
+    dest="dry_run",
+    action="store_true",
+    help="Führt keine Operationen aus, sondern zeigt nur an, welche Änderungen vorgenommen würden. Impliziert --debug.",
+)
 
 
 # simple debug function
@@ -245,7 +246,8 @@ def main() -> None:
     args = parser.parse_args()
 
     debug_flag = bool(args.debug)
-    globals()["DEBUG_FLAG"] = debug_flag
+    globals()["DRY_RUN"] = args.dry_run
+    globals()["DEBUG_FLAG"] = debug_flag or args.dry_run
 
     # check srcdir
     srcdir = resolve_path(args.srcdir)
@@ -415,12 +417,14 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     # prepare output folders
     if os.path.isdir(outdir):
         if settings.getboolean("clear"):
-            shutil.rmtree(outdir)
+            if not DRY_RUN:
+                shutil.rmtree(outdir)
             debug(f"removed target directory <{outdir}>", 1)
         else:
             debug(f"using existing target directory at <{outdir}>", 1)
     if not os.path.isdir(outdir):
-        os.makedirs(outdir)
+        if not DRY_RUN:
+            os.makedirs(outdir)
         debug(f"created target directory <{outdir}>", 1)
 
     # extract some config options to local scope
@@ -430,46 +434,11 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
 
     tag_open = settings["task open"]
     tag_close = settings["task close"]
-    task_replace = lambda l: l  # noqa: E731
-    if settings["task comment prefix"]:
-        m = RE_REPLACE.match(settings["task comment prefix"])
-        if m:
-            tpat, trepl = m.group(1), m.group(2)
-            tpat, trepl = re.compile(tpat.replace("\\/", "/")), trepl.replace(
-                "\\/", "/"
-            )
-
-            def task_replace(line):
-                return re.sub(tpat, trepl, line)
-
-        else:
-            tpat = re.compile(f"^(\\s*)({settings['task comment prefix']})")
-
-            def task_replace(line):
-                # return re.sub(tpat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
-                return re.sub(tpat, "\\1", line)
 
     ml_open = settings["solution open"]
     ml_close = settings["solution close"]
-    ml_replace = lambda l: l  # noqa: E731
-    if settings["solution comment prefix"]:
-        if settings["solution comment prefix"].startswith("\\"):
-            spat, srepl, _ = re.split(
-                r"(?<!\\)\/", settings["solution comment prefix"][1:], 2
-            )
-            spat, srepl = re.compile(spat.replace("\\/", "/")), srepl.replace(
-                "\\/", "/"
-            )
 
-            def ml_replace(line):
-                return re.sub(spat, srepl, line)
-
-        else:
-            spat = re.compile(f"^(\\s*)({settings['solution comment prefix']})")
-
-            def ml_replace(line):
-                # return re.sub(spat, lambda m: f"{m.group(1)}{' '*len(m.group(2))}", line)
-                return re.sub(tpat, "\\1", line)
+    transform_func = create_transform(version, settings)
 
     keep_empty_files = settings.getboolean("keep empty files")
 
@@ -481,7 +450,8 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
         subpath = root[strippos:]
         outroot = os.path.join(outdir, subpath)
 
-        os.makedirs(outroot, exist_ok=True)
+        if not DRY_RUN:
+            os.makedirs(outroot, exist_ok=True)
 
         for file in files:
             fullpath = os.path.join(root, file)
@@ -495,7 +465,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
             elif match_patterns(file, include):
                 is_empty = True
                 with open(fullpath, "r", encoding=encoding) as inf:
-                    with open(fulloutpath, "w", encoding=encoding) as outf:
+                    with open_file(fulloutpath, encoding=encoding) as outf:
                         skip = False
                         transform = None
                         line = inf.readline()
@@ -510,7 +480,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                 transform = None
                             elif lline.startswith(ml_open):
                                 skip = not is_ml
-                                transform = ml_replace
+                                transform = transform_func
                             elif lline.startswith(tag_open):
                                 parts = lline.split()
                                 if len(parts) > 1:
@@ -523,7 +493,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                         skip = not test_version(version, parts[1])
                                 else:
                                     skip = is_ml
-                                transform = task_replace
+                                transform = transform_func
                             elif skip:
                                 pass
                             else:
@@ -547,16 +517,19 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
         if file:
             if os.path.isfile(file):
                 fulloutpath = os.path.join(outdir, os.path.basename(file))
-                shutil.copy(file, fulloutpath)
+                if not DRY_RUN:
+                    shutil.copy(file, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     if is_ml and settings.getboolean("delete solution"):
-        shutil.rmtree(outdir)
+        if not DRY_RUN:
+            shutil.rmtree(outdir)
         debug("removed compiled ml directory", 1)
     elif settings.getboolean("create zip") or settings.getboolean("create zip only"):
         create_zip(outdir, settings)
         if settings.getboolean("create zip only"):
-            shutil.rmtree(outdir)
+            if not DRY_RUN:
+                shutil.rmtree(outdir)
             debug("removed compiled version directory", 1)
 
     if not versions:
@@ -572,26 +545,27 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
         # prepare output directory
         if settings["create zip dir"]:
             dir = resolve_path(settings["create zip dir"])
-        if not os.path.exists(dir):
+        if not os.path.exists(dir) and not DRY_RUN:
             os.makedirs(dir)
 
         # prepare output filename
         filename = f"{filename}.zip"
         outfile = os.path.join(dir, filename)
-        if os.path.isfile(filename):
+        if os.path.isfile(outfile) and not DRY_RUN:
             os.remove(outfile)
-        elif os.path.isdir(filename):
+        elif os.path.isdir(outfile):
             debug(f"directory found at <{outfile}>! unable to create zip file.", 1)
             return
 
         # create zip file
-        with zipfile.ZipFile(outfile, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in os.walk(path):
-                for file in files:
-                    filepath = os.path.join(root, file)
-                    relpath = os.path.relpath(filepath, start=path)
-                    zipf.write(filepath, arcname=relpath)
-            debug(f"created zip file at <{outfile}>", 1)
+        if not DRY_RUN:
+            with zipfile.ZipFile(outfile, "w", zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        filepath = os.path.join(root, file)
+                        relpath = os.path.relpath(filepath, start=path)
+                        zipf.write(filepath, arcname=relpath)
+        debug(f"created zip file at <{outfile}>", 1)
 
 
 def resolve_path(path: str, base: str = None) -> str:
@@ -665,7 +639,7 @@ def args_to_config(
     destination and the values the boolean that is stored (e.g. True for store_true).
     This is necessary because boolean flags are always set and will override
     any value already set in the config object. By providing the flags dict,
-    the option is only overriden, if the flag was supplied with the arguments.
+    the option is only overridden, if the flag was supplied with the arguments.
     """
     for k, v in vars(args).items():
         if v is not None:
@@ -677,6 +651,38 @@ def args_to_config(
                     config[k] = ",".join(v)
                 else:
                     config[k] = str(v)
+
+
+def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any]:
+    if mode[0] == "w" and DRY_RUN:
+        return io.StringIO()
+    else:
+        return open(path, mode, encoding=encoding)
+
+
+def create_transform(version: int, settings: configparser.ConfigParser) -> t.Callable:
+    transform = lambda line: line  # noqa: E731
+
+    prefix = settings["task comment prefix"]
+    if version == ML_INT:
+        prefix = settings["solution comment prefix"]
+
+    if prefix:
+        m = RE_REPLACE.match(prefix)
+        if m:
+            pat, repl = m.group(1).replace("\\/", "/"), m.group(2).replace("\\/", "/")
+            pat, repl = re.compile(pat), repl
+
+            def transform(line):
+                return re.sub(pat, repl, line)
+
+        else:
+            pat = re.compile(f"^(\\s*)({prefix})")
+
+            def transform(line):
+                return re.sub(pat, "\\1", line)
+
+    return transform
 
 
 def match_patterns(filename: str, patterns: t.List[str]) -> bool:
