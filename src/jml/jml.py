@@ -12,34 +12,63 @@ import typing as t
 import zipfile
 from datetime import datetime
 
+
+# Current version number
 __version__ = "0.2.10"
 
 
-class JMLHelpFormatter(argparse.HelpFormatter):
-    """Custom HelpFormatter to replace spaces with underscores in
-    metavars.
-    """
+# Some constants
+RE_VERSION = re.compile(r"^\d+$")
+RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
+RE_REPLACE = re.compile(r"^(?<!\\)/(.*?)(?<!\\)/(.*)(?<!\\)/$")
 
-    def __init__(self, prog, indent_increment=2, max_help_position=24, width=None):
-        super().__init__(prog, indent_increment=2, max_help_position=24, width=None)
+ML_INT = -1
 
-    def _metavar_formatter(self, action, default_metavar):
-        sformat = super()._metavar_formatter(action, default_metavar)
+CONFIG_FILE = ".jml"
+CONFIG_SECTION = "settings"
+DEFAULT_CONFIG = {
+    "name": "",
+    "output dir": "",
+    "task open": "/*aufg*",
+    "task close": "*aufg*/",
+    "task comment prefix": "",
+    "solution open": "//ml*",
+    "solution close": "//*ml",
+    "solution comment prefix": "",
+    "solution suffix": "ML",
+    "name format": "{project}_{version}",
+    "include": "*.java",
+    "+include": "",
+    "-include": "",
+    "exclude": "*.class,*.ctxt,.DS_Store,Thumbs.db,*.iml,.vscode,.eclipse",
+    "+exclude": "",
+    "-exclude": "",
+    "create zip": "no",
+    "create zip only": "no",
+    "create zip dir": "",
+    "encoding": "utf-8",
+    "additional files": "",
+    "+additional files": "",
+    "-additional files": "",
+    "project root": "",
+    "clear": "yes",
+    "delete solution": "no",
+    "keep empty files": "yes",
+    "keep empty folders": "yes",
+}
 
-        def new_format(tuple_size):
-            t = sformat(tuple_size)
-            return tuple(r.replace(" ", "_") if r else r for r in t)
-
-        return new_format
+DEBUG_FLAG = False
+# DRY_RUN = False
 
 
+# Initialize argument parser
 parser = argparse.ArgumentParser(
     prog="jml",
     description="Generiert aus einem Basisprojekt mehrere Projektversionen.",
     add_help=False,
-    formatter_class=JMLHelpFormatter,
 )
 
+# version and help
 parser.add_argument(
     "-h",
     "--help",
@@ -53,10 +82,10 @@ parser.add_argument(
     help="Programmversion anzeigen.",
 )
 
-# Argumente
+# arguments
 parser.add_argument("srcdir", metavar="IN", help="Pfad des Basisprojektes")
 
-# Optionen
+# options
 parser.add_argument(
     "-o",
     "--outdir",
@@ -75,6 +104,7 @@ parser.add_argument(
     "-nf",
     "--name-format",
     dest="name format",
+    metavar="FORMAT",
     action="store",
     help="Format für die Namen der Projektversionen. Angabe als Python-Formatstring. Kann die Variablen {project}, {version} und {date} enthalten. Standard: {project}_{version}",
 )
@@ -82,6 +112,7 @@ parser.add_argument(
     "-mls",
     "--ml-suffix",
     dest="solution suffix",
+    metavar="SUFFIX",
     action="store",
     help="Suffix für die Musterlösung. Standard: ML",
 )
@@ -89,6 +120,7 @@ parser.add_argument(
     "-to",
     "--tag-open",
     dest="task open",
+    metavar="TAG",
     action="store",
     help="Öffnende Aufgaben-Markierung.Standard: /*aufg*",
 )
@@ -96,6 +128,7 @@ parser.add_argument(
     "-tc",
     "--tag-close",
     dest="task close",
+    metavar="TAG",
     action="store",
     help="Schließende Aufgaben-Markierung. Standard: *aufg*/",
 )
@@ -103,6 +136,7 @@ parser.add_argument(
     "-mlo",
     "--ml-open",
     dest="solution open",
+    metavar="TAG",
     action="store",
     help="Öffnende Lösungs-Markierung. Standard: //ml*",
 )
@@ -110,6 +144,7 @@ parser.add_argument(
     "-mlc",
     "--ml-close",
     dest="solution close",
+    metavar="TAG",
     action="store",
     help="Schließende Lösungs-Markierung. Standard: //*ml",
 )
@@ -133,13 +168,16 @@ parser.add_argument(
     "-v",
     "--versions",
     dest="versions",
+    metavar="VER",
     action="extend",
+    nargs="+",
     type=str,
     help="Liste von Versionen, die erstellt werden sollen.",
 )
 parser.add_argument(
     "--project-root",
     dest="project root",
+    metavar="PATH",
     action="store",
     help="Bestimmt ein Verzeichnis, das als Wurzelverzeichnis für mehrere Projekte dient. Wenn dies ein Prefix von IN ist, dann reflektiert die Ordnerstruktur in OUT die des Wurzelverzeichnisses. Für IN=/projects/foo/bar/my-project OUT=/projects/out project-root=/projects werden die Projektversionen dann in /projects/out/foo/bar erstellt.",
 )
@@ -184,77 +222,45 @@ parser.add_argument(
     action="store_true",
     help="Zeigt Informationen zur Fehlersuche an.",
 )
+# parser.add_argument(
+#     "--dry-run",
+#     dest="dry_run",
+#     action="store_true",
+#     help="Führt keine Operationen aus, sondern zeigt nur an, welche Änderungen vorgenommen würden. Impliziert --debug.",
+# )
 
 
-RE_VERSION = re.compile(r"^\d+$")
-RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
-RE_REPLACE = re.compile(r"^(?<!\\)/(.*?)(?<!\\)/(.*)(?<!\\)/$")
-
-CONFIG_FILE = ".jml"
-CONFIG_SECTION = "settings"
-DEFAULT_CONFIG = {
-    "name": "",
-    "output dir": "",
-    "task open": "/*aufg*",
-    "task close": "*aufg*/",
-    "task comment prefix": "",
-    "solution open": "//ml*",
-    "solution close": "//*ml",
-    "solution comment prefix": "",
-    "solution suffix": "ML",
-    "name format": "{project}_{version}",
-    "include": "*.java",
-    "+include": "",
-    "-include": "",
-    "exclude": "*.class,*.ctxt,.DS_Store,Thumbs.db,*.iml,.vscode,.eclipse",
-    "+exclude": "",
-    "-exclude": "",
-    "create zip": "no",
-    "create zip only": "no",
-    "create zip dir": "",
-    "encoding": "utf-8",
-    "additional files": "",
-    "+additional files": "",
-    "-additional files": "",
-    "project root": "",
-    "clear": "yes",
-    "delete solution": "no",
-    "keep empty files": "yes",
-    "keep empty folders": "yes",
-}
-
-DEBUG_FLAG = False
-
-
+# simple debug function
 def debug(msg: str, indent: int = 0) -> None:
     """Shows a debug message if debugging is enabled."""
-    if globals()["DEBUG_FLAG"]:
+    if DEBUG_FLAG:
         if indent:
             print(indent * "  " + msg)
         else:
             print(msg)
 
 
+# main function
 def main() -> None:
     args = parser.parse_args()
 
-    debug_flag = args.debug
+    debug_flag = bool(args.debug)
     globals()["DEBUG_FLAG"] = debug_flag
 
     # check srcdir
-    srcdir = args.srcdir = resolve_path(args.srcdir)
+    srcdir = resolve_path(args.srcdir)
     if not os.path.isdir(srcdir):
         print(
             f"Quellverzeichnis <{srcdir}> ist nicht vorhanden! Bitte wähle ein gültiges Projektverzeichnis."
         )
         quit()
 
-    # resolve final rootdir (requires to get final project root from config)
+    # resolve rootdir (requires to read project config to get final project root)
     project_root = vars(args)["project root"]
     if project_root:
         project_root = resolve_path(project_root)
 
-    # read project config first, to get final root dir
+    ### read project config, to get final rootdir
     proj_config = None
     proj_config_file = os.path.join(srcdir, CONFIG_FILE)
     if os.path.exists(proj_config_file):
@@ -294,7 +300,7 @@ def main() -> None:
             del settings[k]
 
     # add cli arguments
-    merge_configs(
+    args_to_config(
         settings,
         args,
         flags={
@@ -310,7 +316,7 @@ def main() -> None:
         settings["name"] = os.path.basename(srcdir)
 
     # show config for debugging
-    if debug_flag:
+    if DEBUG_FLAG:
         debug("config loaded:")
         for k, v in sorted(settings.items()):
             debug(f"{k} = {v}", 1)
@@ -363,7 +369,7 @@ def main() -> None:
     debug(f"  to <{outdir}>", 1)
 
     debug("Creating solution version:")
-    versions = create_version(-1, settings)
+    versions = create_version(ML_INT, settings)
     if max(versions) > 0:
         versions = {v + 1 for v in range(max(versions))}
 
@@ -387,7 +393,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     srcdir = settings["srcdir"]
     outdir = settings["output dir"]
     name = settings["name"]
-    is_ml = version < 0
+    is_ml = version == ML_INT
 
     versions = set()
 
@@ -429,10 +435,13 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
         m = RE_REPLACE.match(settings["task comment prefix"])
         if m:
             tpat, trepl = m.group(1), m.group(2)
-            tpat, trepl = re.compile(tpat.replace("\\/", "/")), trepl.replace("\\/", "/")
+            tpat, trepl = re.compile(tpat.replace("\\/", "/")), trepl.replace(
+                "\\/", "/"
+            )
 
             def task_replace(line):
                 return re.sub(tpat, trepl, line)
+
         else:
             tpat = re.compile(f"^(\\s*)({settings['task comment prefix']})")
 
@@ -445,11 +454,16 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     ml_replace = lambda l: l  # noqa: E731
     if settings["solution comment prefix"]:
         if settings["solution comment prefix"].startswith("\\"):
-            spat, srepl, _ = re.split(r"(?<!\\)\/", settings["solution comment prefix"][1:], 2)
-            spat, srepl = re.compile(spat.replace("\\/", "/")), srepl.replace("\\/", "/")
+            spat, srepl, _ = re.split(
+                r"(?<!\\)\/", settings["solution comment prefix"][1:], 2
+            )
+            spat, srepl = re.compile(spat.replace("\\/", "/")), srepl.replace(
+                "\\/", "/"
+            )
 
             def ml_replace(line):
                 return re.sub(spat, srepl, line)
+
         else:
             spat = re.compile(f"^(\\s*)({settings['solution comment prefix']})")
 
@@ -635,7 +649,7 @@ def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
             config.set(CONFIG_SECTION, opt, ",".join(value))
 
 
-def merge_configs(
+def args_to_config(
     config: configparser.SectionProxy,
     args: argparse.Namespace,
     flags: t.Dict[str, bool] = dict(),
