@@ -15,6 +15,12 @@ Befindet sich ein Fehler im Code, sollen die Aufgaben angepasst werden oder hat 
 
 Vor einigen Jahren habe ich den Prozess mit ``jml`` vereinfacht. Das Skript generiert aus einer Basisversion, die mit Markierungen für Aufgaben und Lösungen versehen ist, die verschiedenen Projektversionen, die für den Unterricht nötig sind. Anpassungen sind nur noch im Basisprojekt notwendig.
 
+Beispiele zur Verwendung finden sich in `meinen Projekt-Repository`_ und den
+dazugehörigen `Projektversionen`_.
+
+.. _meinen Projekt-Repository: http://github.com/jneug/schule-projekte
+.. _Projektversionen: http://github.com/jneug/schule-versionen
+
 Installation
 ------------
 
@@ -484,3 +490,16 @@ dann die Ausgabe
     <div></div>
 
 Wie man sieht, bleibt der Kommentar ohne ``TODO:`` erhalten.
+
+
+Integration in IDEs
+-------------------
+
+In Entwicklungsumgebungen wie `Eclipse`_, `IntelliJ`_ und `vscode`_ lässt
+sich ``jml`` relativ einfach als externes Tool einbinden. Die IDEs erlauben
+in der Regel die Verwendung von Platzhaltervariablen, mit denen der Aufruf
+von ``jml`` angepasst werden kann.
+
+.. _Eclipse: https://www.eclipse.org
+.. _IntelliJ: https://www.jetbrains.com/idea/
+.. _vscode: https://vscodium.com
