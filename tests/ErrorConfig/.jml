@@ -1,0 +1,12 @@
+[settings]
+task open=/*aufgabe*
+task close=*aufgabe*/
+task comment prefix = /\/\/ TODO: /\/\/ Aufgabe: /
+solution comment prefix = return
+[settings]
+encoding = iso-8859-1
+name = Maeusekampf
+-include = *.txt
++additional files = FooBar.txt
+project root = ..
+output dir = ../out
