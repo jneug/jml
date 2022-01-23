@@ -249,11 +249,17 @@ def main() -> None:
     globals()["DRY_RUN"] = args.dry_run
     globals()["DEBUG_FLAG"] = debug_flag or args.dry_run
 
+    print(f"jml ({__version__}) [{datetime.now():%H:%M:%S.%f}]")
+    if DRY_RUN:
+        debug("this is a preview of the compilation process", 1)
+        debug("run again without --dry-run to execute", 1)
+        debug("")
+
     # check srcdir
     srcdir = resolve_path(args.srcdir)
     if not os.path.isdir(srcdir):
         print(
-            f"Quellverzeichnis <{srcdir}> ist nicht vorhanden! Bitte wähle ein gültiges Projektverzeichnis."
+            f"Quellverzeichnis {srcdir} ist nicht vorhanden! Bitte wähle ein gültiges Projektverzeichnis."
         )
         quit()
 
@@ -268,7 +274,7 @@ def main() -> None:
     if os.path.exists(proj_config_file):
         proj_config = configparser.ConfigParser(interpolation=None)
         proj_config.read(proj_config_file)
-        debug(f"read config from source dir at <{proj_config_file}>")
+        debug(f"read config from source dir at {proj_config_file}")
         if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
             project_root = resolve_path(
                 proj_config.get(CONFIG_SECTION, "project root"), srcdir
@@ -286,14 +292,14 @@ def main() -> None:
     # read default user config
     user_config_file = os.path.expanduser(os.path.join("~", CONFIG_FILE))
     if read_config(config, user_config_file):
-        debug(f"read config from user home at <{user_config_file}>")
+        debug(f"read config from user home at {user_config_file}")
     if not project_root and settings['project root']:
         project_root = settings['project root']
     # read project root config
     if project_root:
         root_config_file = os.path.join(project_root, CONFIG_FILE)
         if read_config(config, root_config_file):
-            debug(f"read config from project root at <{root_config_file}>")
+            debug(f"read config from project root at {root_config_file}")
     # read project specific config
     if proj_config:
         config.read_dict(proj_config, source=proj_config_file)
@@ -369,8 +375,8 @@ def main() -> None:
 
     #  run jml
     debug("Compiling source project <{}>".format(settings["name"]))
-    debug(f"from <{srcdir}>", 1)
-    debug(f"  to <{outdir}>", 1)
+    debug(f"from {srcdir}", 1)
+    debug(f"  to {outdir}", 1)
 
     debug("Creating solution version:")
     versions = create_version(ML_INT, settings)
@@ -419,15 +425,13 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     # prepare output folders
     if os.path.isdir(outdir):
         if settings.getboolean("clear"):
-            if not DRY_RUN:
-                shutil.rmtree(outdir)
-            debug(f"removed target directory <{outdir}>", 1)
+            remove_dir(outdir)
+            debug(f"removed target directory {outdir}", 1)
         else:
-            debug(f"using existing target directory at <{outdir}>", 1)
+            debug(f"using existing target directory at {outdir}", 1)
     if not os.path.isdir(outdir):
-        if not DRY_RUN:
-            os.makedirs(outdir)
-        debug(f"created target directory <{outdir}>", 1)
+        make_dirs(outdir)
+        debug(f"created target directory {outdir}", 1)
 
     # extract some config options to local scope
     include = settings.getlist("include")  # type: ignore
@@ -452,8 +456,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
         subpath = root[strippos:]
         outroot = os.path.join(outdir, subpath)
 
-        if not DRY_RUN:
-            os.makedirs(outroot, exist_ok=True)
+        make_dirs(outroot)
 
         for file in files:
             fullpath = os.path.join(root, file)
@@ -510,7 +513,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                 else:
                     debug(f"{file:>32} !> {fulloutpath}", 2)
             else:
-                shutil.copy(fullpath, fulloutpath)
+                copy_file(fullpath, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     # copy additional files
@@ -519,19 +522,16 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
         if file:
             if os.path.isfile(file):
                 fulloutpath = os.path.join(outdir, os.path.basename(file))
-                if not DRY_RUN:
-                    shutil.copy(file, fulloutpath)
+                copy_file(file, fulloutpath)
                 debug(f"{file:>32} -> {fulloutpath}", 2)
 
     if is_ml and settings.getboolean("delete solution"):
-        if not DRY_RUN:
-            shutil.rmtree(outdir)
+        remove_dir(outdir)
         debug("removed compiled ml directory", 1)
     elif settings.getboolean("create zip") or settings.getboolean("create zip only"):
         create_zip(outdir, settings)
         if settings.getboolean("create zip only"):
-            if not DRY_RUN:
-                shutil.rmtree(outdir)
+            remove_dir(outdir)
             debug("removed compiled version directory", 1)
 
     if not versions:
@@ -547,8 +547,8 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
         # prepare output directory
         if settings["create zip dir"]:
             dir = resolve_path(settings["create zip dir"])
-        if not os.path.exists(dir) and not DRY_RUN:
-            os.makedirs(dir)
+        if not os.path.exists(dir):
+            make_dirs(dir)
 
         # prepare output filename
         filename = f"{filename}.zip"
@@ -556,7 +556,7 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
         if os.path.isfile(outfile) and not DRY_RUN:
             os.remove(outfile)
         elif os.path.isdir(outfile):
-            debug(f"directory found at <{outfile}>! unable to create zip file.", 1)
+            debug(f"directory found at {outfile}! unable to create zip file.", 1)
             return
 
         # create zip file
@@ -567,7 +567,7 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
                         filepath = os.path.join(root, file)
                         relpath = os.path.relpath(filepath, start=path)
                         zipf.write(filepath, arcname=relpath)
-        debug(f"created zip file at <{outfile}>", 1)
+        debug(f"created zip file at {outfile}", 1)
 
 
 def resolve_path(path: str, base: str = None) -> str:
@@ -730,6 +730,23 @@ def test_version(version1: t.Union[str, int], version2: t.Union[str, int]) -> bo
     if op == "!=" or op == "<>":
         return ver1 != ver2
     return False
+
+
+# Utilities for file operations
+## just wrappers that respect DRY_RUN settings
+def copy_file(inpath: str, outpath: str) -> None:
+    if not DRY_RUN:
+        shutil.copy(inpath, outpath)
+
+
+def remove_dir(inpath: str) -> None:
+    if not DRY_RUN:
+        shutil.rmtree(inpath)
+
+
+def make_dirs(path: str, exist_ok: bool = True) -> None:
+    if not DRY_RUN:
+        os.makedirs(path, exist_ok=exist_ok)
 
 
 # When run as a single file outside module structure
