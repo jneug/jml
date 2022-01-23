@@ -5,6 +5,7 @@ import argparse
 import configparser
 import fnmatch
 import io
+import logging
 import os
 import re
 import shutil
@@ -60,6 +61,8 @@ DEFAULT_CONFIG = {
 
 DEBUG_FLAG = False
 DRY_RUN = False
+
+logger = logging.getLogger("jml")
 
 
 # Initialize argument parser
@@ -224,6 +227,15 @@ parser.add_argument(
     help="Zeigt Informationen zur Fehlersuche an.",
 )
 parser.add_argument(
+    "--log-level",
+    dest="log_level",
+    metavar="LEVEL",
+    action="store",
+    default=logging.WARNING,
+    type=int,
+    help="Setzt den Logging-Level.",
+)
+parser.add_argument(
     "--dry-run",
     dest="dry_run",
     action="store_true",
@@ -231,36 +243,20 @@ parser.add_argument(
 )
 
 
-# simple debug function
-def debug(msg: str, indent: int = 0) -> None:
-    """Shows a debug message if debugging is enabled."""
-    if DEBUG_FLAG:
-        if indent:
-            print(indent * "  " + msg)
-        else:
-            print(msg)
-
-
 # main function
 def main() -> None:
     args = parser.parse_args()
-
-    debug_flag = bool(args.debug)
-    globals()["DRY_RUN"] = args.dry_run
-    globals()["DEBUG_FLAG"] = debug_flag or args.dry_run
+    configure_logger(args)
 
     print(f"jml ({__version__}) [{datetime.now():%H:%M:%S.%f}]")
     if DRY_RUN:
-        debug("this is a preview of the compilation process", 1)
-        debug("run again without --dry-run to execute", 1)
-        debug("")
+        print("  this is a preview of the compilation process")
+        print("  run again without --dry-run to execute\n")
 
     # check srcdir
     srcdir = resolve_path(args.srcdir)
     if not os.path.isdir(srcdir):
-        print(
-            f"Quellverzeichnis {srcdir} ist nicht vorhanden! Bitte wähle ein gültiges Projektverzeichnis."
-        )
+        print(f"Source directory {srcdir} not found! Please select a valid source.")
         quit()
 
     # resolve rootdir (requires to read project config to get final project root)
@@ -268,17 +264,18 @@ def main() -> None:
     if project_root:
         project_root = resolve_path(project_root)
 
-    ### read project config, to get final rootdir
+    ## read project config, to get final rootdir
     proj_config = None
     proj_config_file = os.path.join(srcdir, CONFIG_FILE)
     if os.path.exists(proj_config_file):
-        proj_config = configparser.ConfigParser(interpolation=None)
-        proj_config.read(proj_config_file)
-        debug(f"read config from source dir at {proj_config_file}")
-        if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
-            project_root = resolve_path(
-                proj_config.get(CONFIG_SECTION, "project root"), srcdir
-            )
+        proj_config = configparser.ConfigParser(
+            interpolation=None, converters={"list": lambda v: re.split(r"[,;\n]+", v)}
+        )
+        if read_config(proj_config, proj_config_file, resolve=False):
+            if not project_root and proj_config.has_option(CONFIG_SECTION, "project root"):
+                project_root = resolve_path(
+                    proj_config.get(CONFIG_SECTION, "project root"), srcdir
+                )
 
     # build config for this run
     config = configparser.ConfigParser(
@@ -292,24 +289,25 @@ def main() -> None:
     # read default user config
     user_config_file = os.path.expanduser(os.path.join("~", CONFIG_FILE))
     if read_config(config, user_config_file):
-        debug(f"read config from user home at {user_config_file}")
-    if not project_root and settings['project root']:
-        project_root = settings['project root']
+        logger.debug(f"read config from user home at {user_config_file}")
+    if not project_root and settings["project root"]:
+        project_root = settings["project root"]
     # read project root config
     if project_root:
         root_config_file = os.path.join(project_root, CONFIG_FILE)
         if read_config(config, root_config_file):
-            debug(f"read config from project root at {root_config_file}")
+            logger.debug(f"read config from project root at {root_config_file}")
     # read project specific config
     if proj_config:
         config.read_dict(proj_config, source=proj_config_file)
         resolve_config(config, base=srcdir)
+        logger.debug(f"read config from source dir at {proj_config_file}")
     # unset everything other than default keys
     for k in settings.keys():
         if k not in DEFAULT_CONFIG.keys():
             del settings[k]
 
-    # add cli arguments
+    # add cli arguments to config
     args_to_config(
         settings,
         args,
@@ -327,35 +325,19 @@ def main() -> None:
 
     # show config for debugging
     if DEBUG_FLAG:
-        debug("config loaded:")
+        logger.debug("config loaded:")
         for k, v in sorted(settings.items()):
-            debug(f"{k} = {v}", 1)
+            logger.debug(f"    {k} = {v}")
 
     # check tag options for incompatibilities
     if settings["task open"] == settings["task close"]:
-        print(
-            "Die öffnenden und schließenden Tags für Aufgaben müssen unterschiedlich sein."
-        )
-        print("  Bitte setze einzigartige Tags. Z.B. @jml und lmj@")
-        print(
-            "  Aktuell angegeben: {} / {}".format(
-                settings["task open"],
-                settings["task close"],
-            )
-        )
+        print("opening and closing task tags need to be unique.")
+        print(f"  current setting: {settings['task open']} / {settings['task close']}")
         quit()
 
     if settings["solution open"] == settings["solution close"]:
-        print(
-            "Die öffnenden und schließenden Tags für Musterlösungen müssen unterschiedlich sein."
-        )
-        print("  Bitte setze einzigartige Tags. Z.B. @jml und lmj@")
-        print(
-            "  Aktuell angegeben: {} / {}".format(
-                settings["solution open"],
-                settings["solution close"],
-            )
-        )
+        print("opening and closing solution tags need to be unique.")
+        print(f"  current setting: {settings['solution open']} / {settings['solution close']}")
         quit()
 
     # prepare outdir
@@ -371,22 +353,29 @@ def main() -> None:
         outdir = os.path.dirname(
             os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
         )
-    settings["output dir"] = outdir
+    if outdir == srcdir:
+        print("source and output directories can not be the same")
+        print(f"  currently using {srcdir} for both")
+        quit()
+    else:
+        settings["output dir"] = outdir
 
     #  run jml
-    debug("Compiling source project <{}>".format(settings["name"]))
-    debug(f"from {srcdir}", 1)
-    debug(f"  to {outdir}", 1)
+    logger.info("Compiling source project <{}>".format(settings["name"]))
+    logger.info(f"  from {srcdir}")
+    logger.info(f"    to {outdir}\n")
 
-    debug("Creating solution version:")
+    logger.info("Creating solution version:")
     versions = create_version(ML_INT, settings)
+
     if max(versions) > 0:
         versions = {v + 1 for v in range(max(versions))}
-
     if args.versions:
         versions = {int(v) for v in args.versions if int(v) in versions}
+    logger.info(f"Auto-discovered {len(versions)} versions to generate: {versions}")
+
     for ver in sorted(versions):
-        debug(f"Creating version {ver}:")
+        logger.info(f"Creating version {ver}:")
         create_version(ver, settings)
 
 
@@ -426,12 +415,12 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     if os.path.isdir(outdir):
         if settings.getboolean("clear"):
             remove_dir(outdir)
-            debug(f"removed target directory {outdir}", 1)
+            logger.info(f"  removed target directory {outdir}")
         else:
-            debug(f"using existing target directory at {outdir}", 1)
+            logger.debug(f"  using existing target directory at {outdir}")
     if not os.path.isdir(outdir):
         make_dirs(outdir)
-        debug(f"created target directory {outdir}", 1)
+        logger.info(f"  created target directory {outdir}")
 
     # extract some config options to local scope
     include = settings.getlist("include")  # type: ignore
@@ -451,7 +440,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     strippos = len(srcdir) + 1
 
     # compile files in the srcdir
-    debug(f"creating version {ver_name} in {outdir}", 1)
+    logger.info(f"  creating version {ver_name} in {outdir}")
     for root, dirs, files in os.walk(srcdir):
         subpath = root[strippos:]
         outroot = os.path.join(outdir, subpath)
@@ -465,7 +454,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
             if file == CONFIG_FILE:
                 continue
             elif match_patterns(file, exclude):
-                debug(f"{file:>32} X", 2)
+                logger.info(f"    {file:>32} X")
                 continue
             elif match_patterns(file, include):
                 is_empty = True
@@ -509,12 +498,12 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                             line = inf.readline()
                 if is_empty and not keep_empty_files:
                     os.remove(fulloutpath)
-                    debug(f"{file:>32} X  (empty)", 2)
+                    logger.info(f"    {file:>32} X  (empty)")
                 else:
-                    debug(f"{file:>32} !> {fulloutpath}", 2)
+                    logger.info(f"    {file:>32} !> {fulloutpath}")
             else:
                 copy_file(fullpath, fulloutpath)
-                debug(f"{file:>32} -> {fulloutpath}", 2)
+                logger.info(f"    {file:>32} -> {fulloutpath}")
 
     # copy additional files
     additional_files = settings.getlist("additional files")  # type: ignore
@@ -523,16 +512,16 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
             if os.path.isfile(file):
                 fulloutpath = os.path.join(outdir, os.path.basename(file))
                 copy_file(file, fulloutpath)
-                debug(f"{file:>32} -> {fulloutpath}", 2)
+                logger.info(f"    {file:>32} -> {fulloutpath}")
 
     if is_ml and settings.getboolean("delete solution"):
         remove_dir(outdir)
-        debug("removed compiled ml directory", 1)
+        logger.info("  removed compiled ml directory")
     elif settings.getboolean("create zip") or settings.getboolean("create zip only"):
         create_zip(outdir, settings)
         if settings.getboolean("create zip only"):
             remove_dir(outdir)
-            debug("removed compiled version directory", 1)
+            logger.info("  removed compiled version directory")
 
     if not versions:
         versions.add(0)
@@ -556,7 +545,7 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
         if os.path.isfile(outfile) and not DRY_RUN:
             os.remove(outfile)
         elif os.path.isdir(outfile):
-            debug(f"directory found at {outfile}! unable to create zip file.", 1)
+            logger.warning(f"  directory found at {outfile}! unable to create zip file.")
             return
 
         # create zip file
@@ -567,7 +556,7 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
                         filepath = os.path.join(root, file)
                         relpath = os.path.relpath(filepath, start=path)
                         zipf.write(filepath, arcname=relpath)
-        debug(f"created zip file at {outfile}", 1)
+        logger.info(f"  created zip file at {outfile}")
 
 
 def resolve_path(path: str, base: str = None) -> str:
@@ -585,19 +574,49 @@ def resolve_path(path: str, base: str = None) -> str:
     return os.path.realpath(path)
 
 
-def read_config(config: configparser.ConfigParser, config_file: str) -> bool:
+def configure_logger(args: argparse.Namespace) -> None:
+    """Configures the logger for this run.
+    """
+    globals()["DRY_RUN"] = bool(args.dry_run)
+    if DRY_RUN:
+        # args.debug = True
+        if args.log_level > logging.INFO:
+            args.log_level = logging.INFO
+    if args.debug:
+        args.log_level = logging.DEBUG
+
+    logging.basicConfig(level=args.log_level, format="%(message)s")
+
+
+def read_config(config: configparser.ConfigParser, config_file: str, resolve: bool = True) -> bool:
+    """Reads the ini file config_file into the given ConfigParser object
+    and calls resolve_config.
+    """
     if os.path.isfile(config_file):
         try:
             config.read(config_file)
-        except configparser.DuplicateOptionError as doe:
-            print(doe.message)
+        except configparser.DuplicateOptionError:
+            logger.error(f"duplicate option in {config_file}")
             quit()
-        resolve_config(config, base=os.path.dirname(config_file))
+        except configparser.DuplicateSectionError:
+            logger.error(f"duplicate section in {config_file}")
+            quit()
+        except configparser.MissingSectionHeaderError:
+            logger.error(f"missing [settings] section in {config_file}")
+            quit()
+        except configparser.ParsingError:
+            logger.error(f"error parsing config file {config_file}")
+            quit()
+        if resolve:
+            resolve_config(config, base=os.path.dirname(config_file))
         return True
     return False
 
 
 def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
+    """Resolves the provided ConfigParser by making relative path absolute in
+    relation to the given base path.
+    """
     for opt in ("output dir", "create zip dir", "project root"):
         if config.has_option(CONFIG_SECTION, opt):
             path = config.get(CONFIG_SECTION, opt)
@@ -658,6 +677,8 @@ def args_to_config(
 
 
 def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any]:
+    """Opens a file for reading/writing.
+    """
     if mode[0] == "w" and DRY_RUN:
         return io.StringIO()
     else:
