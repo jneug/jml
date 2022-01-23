@@ -287,6 +287,8 @@ def main() -> None:
     user_config_file = os.path.expanduser(os.path.join("~", CONFIG_FILE))
     if read_config(config, user_config_file):
         debug(f"read config from user home at <{user_config_file}>")
+    if not project_root and settings['project root']:
+        project_root = settings['project root']
     # read project root config
     if project_root:
         root_config_file = os.path.join(project_root, CONFIG_FILE)
@@ -574,6 +576,8 @@ def resolve_path(path: str, base: str = None) -> str:
     realpath. If base is omitted, os.getcwd() is used. Then this
     essentially replicates os.path.abspath()
     """
+    if not path:
+        return ""
     if not os.path.isabs(path):
         if not base:
             base = os.getcwd()
@@ -597,8 +601,7 @@ def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
     for opt in ("output dir", "create zip dir", "project root"):
         if config.has_option(CONFIG_SECTION, opt):
             path = config.get(CONFIG_SECTION, opt)
-            if path:
-                config.set(CONFIG_SECTION, opt, resolve_path(path, base))
+            config.set(CONFIG_SECTION, opt, resolve_path(path, base))
 
     for opt in ("exclude", "include", "additional files"):
         # get current list
@@ -617,7 +620,8 @@ def resolve_config(config: configparser.ConfigParser, base: str = None) -> None:
             # resolve paths for additional files
             new_value = set()
             for path in value:
-                new_value.add(resolve_path(path, base))
+                if path:
+                    new_value.add(resolve_path(path, base))
             config.set(CONFIG_SECTION, opt, ",".join(new_value))
         else:
             config.set(CONFIG_SECTION, opt, ",".join(value))
@@ -660,7 +664,7 @@ def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any
         return open(path, mode, encoding=encoding)
 
 
-def create_transform(version: int, settings: configparser.ConfigParser) -> t.Callable:
+def create_transform(version: int, settings: configparser.SectionProxy) -> t.Callable:
     transform = lambda line: line  # noqa: E731
 
     prefix = settings["task comment prefix"]
