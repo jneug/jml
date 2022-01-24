@@ -5,6 +5,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/)
 und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.2] - 2022-01-24
 ### Added
 - Option `--log-level` zum Setzen eine individuellen Log-Levels. `--debug` setzt den Log-Level auf `logging.DEBUG` (`10`), `--dry-run` auf `logging.INFO` (`20`). Standard ist `logging.WARNING` (`30`) und gibt nur Fehler und Warnungen aus.
 - Neues Logo.
