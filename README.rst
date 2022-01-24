@@ -3,7 +3,7 @@ Java Musterlösung (jml)
 =======================
 
 .. image:: jml.png
-    :scale: 80 %
+    :width: 60%
     :align: center
 
 Java Musterlösung (kurz ``jml``) ist ein kleines Skript mit dem mehrere Projektversionen aus einer Musterlösung generiert werden können.
