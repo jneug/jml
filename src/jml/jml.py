@@ -677,15 +677,6 @@ def args_to_config(
                     config[k] = str(v)
 
 
-def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any]:
-    """Opens a file for reading/writing.
-    """
-    if mode[0] == "w" and DRY_RUN:
-        return io.StringIO()
-    else:
-        return open(path, mode, encoding=encoding)
-
-
 def create_transform(version: int, settings: configparser.SectionProxy) -> t.Callable:
     transform = lambda line: line  # noqa: E731
 
@@ -756,19 +747,54 @@ def test_version(version1: t.Union[str, int], version2: t.Union[str, int]) -> bo
 
 # Utilities for file operations
 ## just wrappers that respect DRY_RUN settings
+def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any]:
+    """Opens a file for reading/writing.
+    """
+    if mode[0] == "w" and DRY_RUN:
+        return io.StringIO()
+    else:
+        try:
+            return open(path, mode, encoding=encoding)
+        except PermissionError as perr:
+            abort("could not open file", err=perr)
+            quit()
+
+
 def copy_file(inpath: str, outpath: str) -> None:
     if not DRY_RUN:
-        shutil.copy(inpath, outpath)
+        try:
+            shutil.copy(inpath, outpath)
+        except PermissionError as perr:
+            abort("could not copy file", err=perr)
 
 
 def remove_dir(inpath: str) -> None:
     if not DRY_RUN:
-        shutil.rmtree(inpath)
+        try:
+            shutil.rmtree(inpath)
+        except PermissionError as perr:
+            abort(f"could not remove directory {inpath}", err=perr)
 
 
 def make_dirs(path: str, exist_ok: bool = True) -> None:
     if not DRY_RUN:
-        os.makedirs(path, exist_ok=exist_ok)
+        try:
+            os.makedirs(path, exist_ok=exist_ok)
+        except OSError as oserr:
+            abort("could not create directory", err=oserr)
+
+
+def abort(message: str = "", err: OSError = None) -> None:
+    """Shows an optional error message, shuts everything down and
+    aborts the script with error code 1.
+    """
+    if message:
+        logger.error(message)
+    if err:
+        logger.error(f"  ({err.errno}) {err.filename}: {err.strerror}")
+    logging.shutdown()
+    print("-- operation aborted --")
+    quit(1)
 
 
 # When run as a single file outside module structure
