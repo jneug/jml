@@ -344,7 +344,8 @@ def main() -> None:
     outdir = vars(args)["output dir"]
     if not outdir:
         if not settings["output dir"]:
-            outdir = os.path.dirname(srcdir)
+            # outdir = os.getcwd()
+            outdir = os.path.join(os.path.dirname(srcdir), 'jml')
         else:
             outdir = settings["output dir"]
     else:
@@ -361,21 +362,21 @@ def main() -> None:
         settings["output dir"] = outdir
 
     #  run jml
-    logger.info("Compiling source project <{}>".format(settings["name"]))
+    logger.info("compiling source project <{}>".format(settings["name"]))
     logger.info(f"  from {srcdir}")
     logger.info(f"    to {outdir}\n")
 
-    logger.info("Creating solution version:")
+    logger.info("creating solution version:")
     versions = create_version(ML_INT, settings)
 
     if max(versions) > 0:
         versions = {v + 1 for v in range(max(versions))}
     if args.versions:
         versions = {int(v) for v in args.versions if int(v) in versions}
-    logger.info(f"Auto-discovered {len(versions)} versions to generate: {versions}")
+    logger.info(f"auto-discovered {len(versions)} versions to generate: {versions}")
 
     for ver in sorted(versions):
-        logger.info(f"Creating version {ver}:")
+        logger.info(f"creating version {ver}:")
         create_version(ver, settings)
 
 
@@ -476,7 +477,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                 skip = not is_ml
                                 transform = transform_func
                             elif lline.startswith(tag_open):
-                                parts = lline.split()
+                                parts = lline.split(maxsplit=3)
                                 if len(parts) > 1:
                                     if is_ml:
                                         v_match = RE_VERSION2.match(parts[1])
@@ -730,7 +731,7 @@ def test_version(version1: t.Union[str, int], version2: t.Union[str, int]) -> bo
         return False
     v2_match = RE_VERSION2.match(str(version2))
     if v2_match is None:
-        return False
+        return True
 
     ver1 = int(version1)
     ver2 = int(v2_match.group(2))
