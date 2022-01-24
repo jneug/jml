@@ -39,7 +39,7 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
 .. code-block:: console
 
    $ jml --version
-   jml, version 0.3.2
+   jml, version 0.3.3
 
 Manuelle Installation
 ^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ Manuelle Installation
 .. code-block:: console
 
    $ python3 jml.py --version
-   jml, version 0.3.2
+   jml, version 0.3.3
 
 
 Benutzung
