@@ -254,7 +254,7 @@ def main() -> None:
         print("  run again without --dry-run to execute\n")
 
     # check srcdir
-    srcdir = resolve_path(args.srcdir)
+    srcdir = args.srcdir = resolve_path(args.srcdir)
     if not os.path.isdir(srcdir):
         print(f"Source directory {srcdir} not found! Please select a valid source.")
         quit()
@@ -354,12 +354,7 @@ def main() -> None:
         outdir = os.path.dirname(
             os.path.join(outdir, srcdir[len(project_root) + len(os.sep) :])
         )
-    if outdir == srcdir:
-        print("source and output directories can not be the same")
-        print(f"  currently using {srcdir} for both")
-        quit()
-    else:
-        settings["output dir"] = outdir
+    settings["output dir"] = outdir
 
     #  run jml
     logger.info("compiling source project <{}>".format(settings["name"]))
@@ -411,6 +406,11 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
             project=name, version=version, date=datetime.now()
         )
     outdir = os.path.join(outdir, ver_name)
+
+    if srcdir == outdir:
+        logger.warning(f"skipped {ver_name} (version {version})")
+        logger.warning(f"  output path would override source folder at {srcdir}")
+        return set()
 
     # prepare output folders
     if os.path.isdir(outdir):
