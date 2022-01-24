@@ -2,7 +2,7 @@
 Java Musterlösung (jml)
 =======================
 
-.. image:: jml.png
+.. image:: https://github.com/jneug/jml/raw/main/jml.png
     :width: 60%
     :align: center
 
