@@ -410,9 +410,9 @@ Inhalt von ``~/wurzel/verzeichnis/Basisprojekt/.jml``:
 
     [settings]
     task open = <!--aufg
-    task close = aufg-->
-    solution open = <!--ml
-    solution close = ml-->
+    task close = /aufg-->
+    solution open = <!--ml-->
+    solution close = <!--/ml-->
     include = *.html,*.htm
 
 
@@ -448,6 +448,77 @@ Inhalt von ``~/wurzel/verzeichnis/Basisprojekt/.jml``:
     solution open = # ml:
     solution close = # ml
     include = *.py
+
+
+Markdown Beispiel
+"""""""""""""""""
+
+Markdown-Dokumente besitzen in der Original-Syntax keine Kommentare, daher werden die Markierungen im Basisprojekt angezeigt. Auch die Aufgabenstellungen lassen sich dann nicht verstecken. Ansonsten funktioniert ˋjmlˋ ohne weiteres auch mit Markdown-Dateien.
+
+Wird die Markdown-Datei in HTML konvertiert, dann wird nach Konverter werden aber auch HTML-Kommentare interpretiert und in der Ausgabe versteckt. Daher könnte dieselbe Konfiguration wie oben verwendet werden.
+
+Das Beispiel zeigt eine Konfiguration, um aus einer Markdown-Datei zwei Arbeitsblätter mit Rechenaufgaben zu generieren.
+
+.. code-block:: ini
+
+    [settings]
+    task open = <!--aufg
+    task close = /aufg-->
+    solution open = <!--ml-->
+    solution close = <!--/ml-->
+    include = *.md,*.mdown,*.markdown
+
+.. code-block:: markdown
+
+    # Kopfrechnen
+    
+    ## Aufgabe 1
+    <!--aufg 1
+    1. \[ 5+8\cdot 12 = \]
+    /aufg-->
+    <!--aufg 2
+    1. 
+    /aufg-->
+    <!--ml-->
+    ### Variante 1
+    1. \[ 5+8\cdot 12 = 101 \]
+    
+    ### Variante 2
+    <!--/ml-->
+    
+    Weitere Aufgaben ...
+
+
+TeX Beispiel
+""""""""""""""
+
+Für TeX wird die Python-Konfiguration oben angepasst, so dass ˋ%ˋ als Kommentarzeichen interpretiert wird:
+
+.. code-block:: ini
+
+    [settings]
+    task open = %\begin{aufg}
+    task close = %\end{aufg}
+    task comment prefix = %
+    solution open = %\begin{ml}
+    solution close = %\end{ml}
+    include = *.tex
+
+Eine andere Herangehensweise wäre es, im Kopf der TeX-Datei Umgebungen zu definieren, die den Inhalt beim Satz der Basisversion verstecken. Dieses Vorgehen kann z.B. für den Satz von Klassenarbeiten mit mehreren Varianten hilfreich sein.
+
+.. code-block:: ini
+
+    [settings]
+    task open = \begin{jmlaufgabe}
+    task close = \end{jmlaufgabe}
+    solution open = \begin{jml}
+    solution close = \end{jml}
+    include = *.tex
+
+.. code-block:: tex
+
+    
+
 
 Erweiterte Ersetzungen
 """"""""""""""""""""""
