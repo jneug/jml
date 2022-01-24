@@ -5,6 +5,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/)
 und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Verbesserte Fehlerbehandlung bei falschen Dateirechten. `jml` bricht nun mit einer Fehlermeldung ab, wenn auf Dateien oder Ordner keine schreib / leserechte bestehen.
+- Verbesserte Erkennung, ob das Quellverzeichnis versehentlich überschrieben wird.
 
 ## [0.3.3] - 2022-01-24
 ### Added
