@@ -28,7 +28,7 @@ dazugehörigen `Projektversionen`_.
 Installation
 ------------
 
-Die Installation wird wie gewohnt mit pypi durchgeführt:
+Die Installation wird wie gewohnt mit pip durchgeführt:
 
 .. code-block:: console
 
@@ -41,10 +41,12 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
    $ jml --version
    jml, version 0.3.3
 
+`jml` benötigt Python 3.8 oder neuer.
+
 Manuelle Installation
 ^^^^^^^^^^^^^^^^^^^^^
 
-``jml`` kann auch ohne ``pip`` einfach als Skriptdatei genutzt werden. Dazu die aktuelle Version der Datei `jml.py <https://github.com/jneug/jml/blob/main/src/jml/jml.py>`_ aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:
+``jml`` kann auch ohne ``pip`` einfach als Skriptdatei genutzt werden. Es werden keine externen Abhängigkeiten genutzt. Dazu die aktuelle Version der Datei `jml.py <https://github.com/jneug/jml/blob/main/src/jml/jml.py>`_ aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:
 
 .. code-block:: console
 
