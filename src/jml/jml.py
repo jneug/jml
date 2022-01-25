@@ -441,7 +441,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
     strippos = len(srcdir) + 1
 
     # compile files in the srcdir
-    logger.info(f"  creating version {ver_name} in {outdir}")
+    print(f"  creating version {ver_name} in {outdir}")
     for root, dirs, files in os.walk(srcdir):
         subpath = root[strippos:]
         outroot = os.path.join(outdir, subpath)
@@ -551,12 +551,16 @@ def create_zip(path: str, settings: configparser.SectionProxy) -> None:
 
         # create zip file
         if not DRY_RUN:
-            with zipfile.ZipFile(outfile, "w", zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(path):
-                    for file in files:
-                        filepath = os.path.join(root, file)
-                        relpath = os.path.relpath(filepath, start=path)
-                        zipf.write(filepath, arcname=relpath)
+            try:
+                with zipfile.ZipFile(outfile, "w", zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(path):
+                        for file in files:
+                            filepath = os.path.join(root, file)
+                            relpath = os.path.relpath(filepath, start=path)
+                            zipf.write(filepath, arcname=relpath)
+            except OSError as oserr:
+                logger.warning(f"  could not create zip at {outfile} ({oserr.strerror})")
+                return
         logger.info(f"  created zip file at {outfile}")
 
 
@@ -755,8 +759,8 @@ def open_file(path: str, mode: str = "w", encoding: str = "utf-8") -> t.IO[t.Any
     else:
         try:
             return open(path, mode, encoding=encoding)
-        except PermissionError as perr:
-            abort("could not open file", err=perr)
+        except OSError as oserr:
+            abort("could not open file", err=oserr)
             quit()
 
 
@@ -764,16 +768,16 @@ def copy_file(inpath: str, outpath: str) -> None:
     if not DRY_RUN:
         try:
             shutil.copy(inpath, outpath)
-        except PermissionError as perr:
-            abort("could not copy file", err=perr)
+        except OSError as oserr:
+            abort("could not copy file", err=oserr)
 
 
 def remove_dir(inpath: str) -> None:
     if not DRY_RUN:
         try:
             shutil.rmtree(inpath)
-        except PermissionError as perr:
-            abort(f"could not remove directory {inpath}", err=perr)
+        except OSError as oserr:
+            abort(f"could not remove directory {inpath}", err=oserr)
 
 
 def make_dirs(path: str, exist_ok: bool = True) -> None:
