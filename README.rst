@@ -468,24 +468,24 @@ Das Beispiel zeigt eine Konfiguration, um aus einer Markdown-Datei zwei Arbeitsb
     solution close = <!--/ml-->
     include = *.md,*.mdown,*.markdown
 
-.. code-block:: markdown
+.. code-block:: text
 
     # Kopfrechnen
-    
+
     ## Aufgabe 1
     <!--aufg 1
     1. \[ 5+8\cdot 12 = \]
     /aufg-->
     <!--aufg 2
-    1. 
+    1.
     /aufg-->
     <!--ml-->
     ### Variante 1
     1. \[ 5+8\cdot 12 = 101 \]
-    
+
     ### Variante 2
     <!--/ml-->
-    
+
     Weitere Aufgaben ...
 
 
@@ -514,10 +514,6 @@ Eine andere Herangehensweise wäre es, im Kopf der TeX-Datei Umgebungen zu defin
     solution open = \begin{jml}
     solution close = \end{jml}
     include = *.tex
-
-.. code-block:: tex
-
-    
 
 
 Erweiterte Ersetzungen
