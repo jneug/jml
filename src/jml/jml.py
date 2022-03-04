@@ -324,7 +324,7 @@ def main() -> None:
         settings["name"] = os.path.basename(srcdir)
 
     # show config for debugging
-    if DEBUG_FLAG:
+    if logger.isEnabledFor(logging.DEBUG):
         logger.debug("config loaded:")
         for k, v in sorted(settings.items()):
             logger.debug(f"    {k} = {v}")
