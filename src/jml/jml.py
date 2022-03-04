@@ -473,9 +473,15 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                             ):
                                 skip = False
                                 transform = None
-                            elif lline.startswith(ml_open):
-                                skip = not is_ml
-                                transform = transform_func
+                            elif lline.startswith(ml_open) and is_ml:
+                                skip = False
+                                transform = None
+                            elif lline.startswith(ml_open) and not is_ml:
+                                parts = lline.split(maxsplit=3)
+                                if len(parts) > 1:
+                                    skip = not test_version(version, parts[1])
+                                else:
+                                    skip = True
                             elif lline.startswith(tag_open):
                                 parts = lline.split(maxsplit=3)
                                 if len(parts) > 1:
