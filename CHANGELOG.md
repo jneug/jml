@@ -5,13 +5,15 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/)
 und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Mit `--debug` wird die geladene Konfiguration wieder korrekt angezeigt.
 
 ## [0.3.4] - 2022-01-25
 ### Changed
 - Ohne `--debug` werden nun trotzdem einige minimale informative Ausgaben gemacht.
 
 ### Fixed
-- Verbesserte Fehlerbehandlung bei falschen Dateirechten. `jml` bricht nun mit einer Fehlermeldung ab, wenn auf Dateien oder Ordner keine schreib / leserechte bestehen.
+- Verbesserte Fehlerbehandlung bei falschen Dateirechten. `jml` bricht nun mit einer Fehlermeldung ab, wenn auf Dateien oder Ordner keine Schreib- / Leserechte bestehen.
 - Verbesserte Erkennung, ob das Quellverzeichnis versehentlich überschrieben wird.
 
 ## [0.3.3] - 2022-01-24
