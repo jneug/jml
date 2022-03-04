@@ -5,6 +5,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/)
 und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- ML-Tags können nun um eine Versionsnummer ergänzt werden, um den Inhalt auch in Versionen aufzunehmen. `//ml* >2` würde den Inhalt in `//*ml` die Musterlösung und alle Versionen größer `2` aufnehmen.
+
 ### Fixed
 - Mit `--debug` wird die geladene Konfiguration wieder korrekt angezeigt.
 
