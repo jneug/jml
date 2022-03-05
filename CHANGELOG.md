@@ -6,6 +6,10 @@ und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.3.6] - 2022-03-05
+### Fixed
+- Fehler bei der Behandlung der Option `keep empty files` / `--delete-empty` behoben, der alle Dateien fälschlich als leer markiert hat.
+
 ## [0.3.5] - 2022-03-04
 ### Added
 - ML-Tags können nun um eine Versionsnummer ergänzt werden, um den Inhalt auch in Versionen aufzunehmen. `//ml* >2` würde den Inhalt in `//*ml` die Musterlösung und alle Versionen größer `2` aufnehmen.

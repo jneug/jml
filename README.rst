@@ -186,6 +186,16 @@ Es ist auch möglich eine Markierung für mehrere Projektversionen zu nutzen:
     // Taucht nur in Projektversionen 1 und 2 auf.
     *aufg*/
 
+Seit Version 0.3.4 ist es möglich, auch einem Lösungs-Tag eine Versionsnummer wie
+für Aufgaben zu geben. Dadurch wird der Inhalt zusätzlich zur Musterlösung auch in
+den spezifizierten Aufgabenversionen gesetzt:
+
+.. code-block:: java
+
+    //ml* >1
+    // Taucht in der Musterlösung und Versionen größer 1 auf
+    //*ml
+
 
 Optionen
 --------
