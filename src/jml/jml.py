@@ -501,7 +501,7 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                                 if transform:
                                     line = transform(line)
                                 outf.write(line)
-                                is_empty = is_empty or len(line.strip()) > 0
+                                is_empty = is_empty and len(line.strip()) > 0
                             line = inf.readline()
                 if is_empty and not keep_empty_files:
                     os.remove(fulloutpath)
