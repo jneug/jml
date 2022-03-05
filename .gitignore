@@ -4,8 +4,11 @@ __pycache__/
 *$py.class
 
 
+Thumbs.db
+.DS_Store
 .vscode/
 Cheese*
+Sonnensystem/
 tests/out/
 options.csv
 
