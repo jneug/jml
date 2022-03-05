@@ -39,7 +39,7 @@ Bei erfolgreicher Installation ist nun das ``jml`` Kommando verfügbar.
 .. code-block:: console
 
    $ jml --version
-   jml, version 0.3.5
+   jml, version 0.3.6
 
 `jml` benötigt Python 3.8 oder neuer.
 
@@ -51,7 +51,7 @@ Manuelle Installation
 .. code-block:: console
 
    $ python3 jml.py --version
-   jml, version 0.3.5
+   jml, version 0.3.6
 
 
 Benutzung
