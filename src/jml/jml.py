@@ -479,6 +479,9 @@ def create_version(version: int, settings: configparser.SectionProxy) -> t.Set[i
                             elif lline.startswith(ml_open) and not is_ml:
                                 parts = lline.split(maxsplit=3)
                                 if len(parts) > 1:
+                                    v_match = RE_VERSION2.match(parts[1])
+                                    if v_match is not None:
+                                        versions.add(int(v_match.group(2)))
                                     skip = not test_version(version, parts[1])
                                 else:
                                     skip = True
