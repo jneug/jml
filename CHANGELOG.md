@@ -6,6 +6,12 @@ und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+- Rewrites and refactorings introducing some incompatibilities:
+	- Configuration files now use the toml format anf are stored in `jml.toml` files.
+	- The user configuration was moved from `~/.jml` to `~/.config/jml.toml`.
+	- Config keys now use underscores instead of spaces.
+- Development now uses `uv` instead of `poetry`.
+
 ## [0.3.6] - 2022-03-05
 ### Fixed
 - Fehler bei der Behandlung der Option `keep empty files` / `--delete-empty` behoben, der alle Dateien fälschlich als leer markiert hat.

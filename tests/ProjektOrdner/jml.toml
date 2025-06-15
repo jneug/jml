@@ -1,0 +1,10 @@
+task_comment_prefix = "/// TODO: "
+project_root = ".."
+output_dir = "../out"
+task_open = "/*aufgabe*"
+task_close = "*aufgabe*/"
+solution_comment_prefix = "return"
+encoding = "iso-8859-1"
+name = "Maeusekampf"
+"-include" = ["*.txt"]
+"+additional files" = ["FooBar.txt"]

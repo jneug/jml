@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
-
-from jml.jml import main
+__version__ = "0.3.6"
+__cmdname__ = "jml"
