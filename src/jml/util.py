@@ -5,6 +5,7 @@ import click
 import fnmatch
 import rich
 from pathlib import Path
+import urllib.parse
 
 from rich.logging import RichHandler
 
@@ -23,7 +24,12 @@ def configure_logger(
         level=log_level,
         format="%(message)s",
         handlers=[
-            RichHandler(console=console, show_time=False, tracebacks_suppress=[click]),
+            RichHandler(
+                console=console,
+                show_time=False,
+                tracebacks_suppress=[click],
+                markup=True,
+            ),
         ],
     )
     return log_level
@@ -51,3 +57,8 @@ def match_patterns(filename: str, patterns: list[str]) -> bool:
         if fnmatch.fnmatch(filename, p):
             return True
     return False
+
+
+def is_url(url: str) -> bool:
+    url = urllib.parse.urlparse(url)
+    return url.scheme not in ("file", "")

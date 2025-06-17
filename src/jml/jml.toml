@@ -1,10 +1,15 @@
+
 name = ""
 name_format = "{project}_{version}"
 project_root = ""
 output_dir = ""
-include = ["*.java"]
-"+include" = []
-"-include" = []
+clear = true
+files_cache = ""
+
+versions = []
+files = []
+
+[sources]
 exclude = [
 	"*.class",
 	"*.ctxt",
@@ -14,23 +19,64 @@ exclude = [
 	".vscode",
 	".eclipse",
 ]
-"+exclude" = []
-"-exclude" = []
-create_zip = false
-create_zip_only = false
-create_zip_dir = ""
+include = ["*.java"]
 encoding = "utf-8"
-additional_files = []
-"+additional_files" = []
-"-additional_files" = []
-clear = true
-delete_solution = false
-keep_empty_files = true
+keep_empty = true
 keep_empty_folders = true
-task_open = "/*aufg*"
-task_close = "*aufg*/"
-task_comment_prefix = ""
-solution_open = "//ml*"
-solution_close = "//*ml"
-solution_comment_prefix = ""
-solution_suffix = "ML"
+
+[zip]
+create = true
+only_zip = true
+dir = ""
+
+[tasks]
+open = "/*aufg*"
+close = "*aufg*/"
+line.prefix = ""
+line.replace = ""
+
+[solutions]
+delete = false
+open = "//ml*"
+close = "//*ml"
+suffix = "ML"
+line.prefix = ""
+line.replace = ""
+
+# name = ""
+# name_format = "{project}_{version}"
+# project_root = ""
+# output_dir = ""
+# include = ["*.java"]
+# "+include" = []
+# "-include" = []
+# exclude = [
+# 	"*.class",
+# 	"*.ctxt",
+# 	".DS_Store",
+# 	"Thumbs.db",
+# 	"*.iml",
+# 	".vscode",
+# 	".eclipse",
+# ]
+# "+exclude" = []
+# "-exclude" = []
+# create_zip = false
+# create_zip_only = false
+# create_zip_dir = ""
+# encoding = "utf-8"
+# additional_files = []
+# "+additional_files" = []
+# "-additional_files" = []
+# clear = true
+# delete_solution = false
+# keep_empty_files = true
+# keep_empty_folders = true
+# task_open = "/*aufg*"
+# task_close = "*aufg*/"
+# task_comment_prefix = ""
+# solution_open = "//ml*"
+# solution_close = "//*ml"
+# solution_comment_prefix = ""
+# solution_suffix = "ML"
+# files = []

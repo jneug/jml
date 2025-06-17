@@ -10,7 +10,8 @@ import logging
 from rich.console import Console
 
 from .util import match_patterns
-from .config import CONFIG_FILE
+from .config import CONFIG_FILE, ConfigDict
+from .files import process_files
 
 # Some constants
 RE_VERSION = re.compile(r"^\d+$")
@@ -26,7 +27,9 @@ def create_solution(config: dict, console: Console = None) -> set[int]:
     return create_version(ML_INT, config, console=console)
 
 
-def create_version(version: int, config: dict, console: Console = None) -> set[int]:
+def create_version(
+    version: int, config: ConfigDict, console: Console = None
+) -> set[int]:
     """Creates a version of the base project by parsing files for markers
     and copying only lines suitable to the given version number. The solution version is created for version number -1.
 
@@ -44,26 +47,34 @@ def create_version(version: int, config: dict, console: Console = None) -> set[i
     dry_run = config["dry_run"]
     is_ml = version == ML_INT
 
+    version_config = ConfigDict(config)
+    version_config.merge(
+        next(
+            (cfg for cfg in config.versions if "no" in cfg and cfg["no"] == version),
+            dict(),
+        )
+    )
+
     versions = set()
 
     # prepare output name
     if is_ml:
-        ver_name = config["name_format"].format(
+        ver_name = version_config.name_format.format(
             project=project_name,
-            version=config["solution_suffix"],
+            version=config.solutions.suffix,
             date=datetime.now(),
         )
     elif version == 0:
         ver_name = project_name
     else:
-        ver_name = config["name_format"].format(
+        ver_name = version_config.name_format.format(
             project=project_name, version=version, date=datetime.now()
         )
     output_dir = output_dir / ver_name
 
     if source_dir == output_dir:
         logger.warning(
-            f"skipped {ver_name} (version {version})\noutput path would override source folder at {source_dir}"
+            f"skipped [ver]{ver_name}[/] (version [ver]{version}[/])\noutput path would override source folder at [path]{source_dir}[/]"
         )
         return set()
 
@@ -71,21 +82,21 @@ def create_version(version: int, config: dict, console: Console = None) -> set[i
     if output_dir.is_dir():
         if config["clear"]:
             remove_path(output_dir, dry_run=dry_run)
-            logger.info(f"removed target directory {output_dir}")
+            logger.info(f"removed target directory [path]{output_dir}[/]")
         else:
-            logger.debug(f"using existing target directory at {output_dir}")
+            logger.debug(f"using existing target directory at [path]{output_dir}[/]")
     if not output_dir.is_dir():
         make_dirs(output_dir, dry_run=dry_run)
-        logger.info(f"created target directory {output_dir}")
+        logger.info(f"created target directory [path]{output_dir}[/]")
 
     # extract some config options to local scope
-    include = config["include"]
-    exclude = config["exclude"]
+    include = config.sources.include
+    exclude = config.sources.exclude
 
-    keep_empty_files = config["keep_empty_files"]
+    keep_empty_files = config.sources.keep_empty
 
     # copy files in the source
-    console.print(f"creating version [yellow]{ver_name}[/] in [cyan]{output_dir}[/]")
+    console.print(f"creating version [ver]{ver_name}[/] in [path]{output_dir}[/]")
     for root, dirs, files in source_dir.walk():
         outroot = output_dir / root.relative_to(source_dir)
         make_dirs(outroot, dry_run=dry_run)
@@ -98,14 +109,14 @@ def create_version(version: int, config: dict, console: Console = None) -> set[i
             reloutpath = fulloutpath.relative_to(output_dir.parent)
 
             if file == CONFIG_FILE:
-                logger.debug(f"skipped config file `{CONFIG_FILE}`")
+                logger.debug(f"skipped config file [file]{CONFIG_FILE}[/]")
                 continue
             elif match_patterns(file, exclude):
                 logger.info(f"{relpath!s:>32} X")
                 continue
             elif match_patterns(file, include):
                 not_empty, _versions = compile_file(
-                    version, fullpath, fulloutpath, config
+                    version, fullpath, fulloutpath, version_config
                 )
                 versions = versions.union(_versions)
 
@@ -118,22 +129,18 @@ def create_version(version: int, config: dict, console: Console = None) -> set[i
                 copy_path(fullpath, fulloutpath, dry_run=dry_run)
                 logger.info(f"{relpath!s:>32} -> {reloutpath!s}")
 
-    # copy additional files
-    additional_files = config["additional_files"]
-    for file in additional_files:
-        if file and file.exists():
-            fulloutpath = output_dir / file.name
-            copy_path(file, fulloutpath, dry_run=dry_run)
-            logger.info(f"{file!s:>32} -> {fulloutpath}")
+    # process additional files
+    for f in process_files(output_dir, version_config):
+        logger.info(f"{f!s:>32} -> {f!s}")
 
-    if is_ml and config["delete_solution"]:
+    if is_ml and config.solutions.delete:
         remove_path(output_dir, dry_run=dry_run)
-        logger.info(f"removed solution directory at `{output_dir}`")
-    elif config["create_zip"] or config["create_zip_only"]:
-        create_zip(output_dir, config)
-        if config["create_zip_only"]:
+        logger.info(f"removed solution directory at [path]{output_dir}[/]")
+    elif config.zip.create or config.zip.only_zip:
+        create_zip(output_dir, version_config)
+        if config.zip.only_zip:
             remove_path(output_dir, dry_run=dry_run)
-            logger.info(f"removed version directory at `{output_dir}`")
+            logger.info(f"removed version directory at [path]{output_dir}[/]")
 
     if not versions:
         versions.add(0)
@@ -151,11 +158,11 @@ def compile_file(
     # extract some config options to local scope
     dry_run = config["dry_run"]
 
-    tag_open = config["task_open"]
-    tag_close = config["task_close"]
+    tag_open = config.tasks.open
+    tag_close = config.tasks.close
 
-    ml_open = config["solution_open"]
-    ml_close = config["solution_close"]
+    ml_open = config.solutions.open
+    ml_close = config.solutions.close
 
     transform_func = create_transform(version, config)
 
@@ -164,8 +171,12 @@ def compile_file(
     is_ml = version == ML_INT
 
     lines_written = 0
-    with open_path(source, "r", encoding=config["encoding"], dry_run=dry_run) as inf:
-        with open_path(target, encoding=config["encoding"], dry_run=dry_run) as outf:
+    with open_path(
+        source, "r", encoding=config.sources.encoding, dry_run=dry_run
+    ) as inf:
+        with open_path(
+            target, encoding=config.sources.encoding, dry_run=dry_run
+        ) as outf:
             skip = False
             transform = None
             line = inf.readline()
@@ -212,11 +223,11 @@ def compile_file(
     return (lines_written > 0, versions)
 
 
-def create_zip(path: str, config: dict) -> None:
+def create_zip(path: str, config: ConfigDict) -> None:
     """Creates a zip file from a project version directory."""
     dry_run = config["dry_run"]
 
-    if config["create_zip"] or config["create_zip_only"]:
+    if config.zip.create or config.zip.only_zip:
         zip_dir, zip_name = path.parent, path.name
 
         # prepare output directory
@@ -224,45 +235,48 @@ def create_zip(path: str, config: dict) -> None:
             make_dirs(zip_dir, dry_run=dry_run)
 
         # prepare output filename
-        file = zip_dir / f"{zip_name}.zip"
-        if file.exists():
-            if file.is_file():
-                remove_path(file, dry_run=dry_run)
-            elif file.is_dir():
-                logger.warning(f"directory found at {file}! unable to create zip file.")
+        zip_file = zip_dir / f"{zip_name}.zip"
+        if zip_file.exists():
+            if zip_file.is_file():
+                remove_path(zip_file, dry_run=dry_run)
+            elif zip_file.is_dir():
+                logger.warning(
+                    f"directory found at {zip_file}! unable to create zip file."
+                )
                 return
 
         # create zip file
         if not dry_run:
             try:
-                with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zipf:
+                with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
                     for root, dirs, files in path.walk():
                         for file in files:
                             filepath = root / file
                             relpath = filepath.relative_to(path)
                             zipf.write(filepath, arcname=relpath)
             except OSError as oserr:
-                logger.warning(f"  could not create zip at {file} ({oserr.strerror})")
+                logger.warning(
+                    f"  could not create zip at {zip_file} ({oserr.strerror})"
+                )
                 return
-        logger.info(f"created zip file at {file}")
+        logger.info(f"created zip file at {zip_file}")
 
 
-def create_transform(version: int, config: dict) -> t.Callable:
+def create_transform(version: int, config: ConfigDict) -> t.Callable:
     transform = lambda line: line  # noqa: E731
 
-    prefix = config["task_comment_prefix"]
+    prefix = config.tasks.line.prefix
+    replace = config.tasks.line.replace
     if version == ML_INT:
-        prefix = config["solution_comment_prefix"]
+        prefix = config.solutions.line.prefix
+        replace = config.solutions.line.replace
 
     if prefix:
-        m = RE_REPLACE.match(prefix)
-        if m:
-            pat, repl = m.group(1).replace("\\/", "/"), m.group(2).replace("\\/", "/")
-            pat, repl = re.compile(pat), repl
+        if replace:
+            prefix = re.compile(prefix)
 
             def transform(line):
-                return re.sub(pat, repl, line)
-
+                return re.sub(prefix, replace, line)
         else:
             pat = re.compile(f"^(\\s*)({prefix})")
 
@@ -320,7 +334,7 @@ def open_path(
 def copy_path(source: Path, target: Path, dry_run: bool = False) -> None:
     if not dry_run:
         if source.is_dir():
-            shutil.copytree(source, target)
+            shutil.copytree(source, target / source.name)
         else:
             shutil.copy(source, target)
     else:

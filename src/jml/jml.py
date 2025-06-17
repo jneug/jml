@@ -11,7 +11,13 @@ import click
 # Current version number
 from jml import __cmdname__, __version__
 from .util import resolve_path, configure_logger
-from .config import load_default_config, load_options_config, load_config
+from .config import (
+    load_default_config,
+    load_options_config,
+    load_config,
+    resolve_source_sets,
+    ConfigDict,
+)
 from .versions import create_solution, create_version
 
 from .console import console
@@ -204,40 +210,43 @@ def cli(
     if project_root:
         config["project_root"] = resolve_path(project_root)
     else:
-        if "project_root" in project_config:
+        if "project_root" in project_config and project_config["project_root"]:
             config["project_root"] = project_config["project_root"]
+        else:
+            config["project_root"] = source.parent
+
     project_root = config["project_root"]
 
     ## load project root config
     config = load_config(project_root, base=config, resolve=True)
     ## load project specific config
-    # config = load_config(source, base=config, resolve=True)
-    config = {**config, **project_config}
+    project_config = resolve_source_sets(project_config, base=config)
+    config.merge(project_config)
     ## add cli options to config
-    config = {**config, **load_options_config(options)}
+    config.merge(load_options_config(options))
 
     ## cleanup some config options
     if not config["name"]:
         config["name"] = source.name
 
     # check tag options for incompatibilities
-    if config["task_open"] == config["task_close"]:
+    if config.tasks.open == config.tasks.close:
         console.print(
             ":cross_mark: opening and closing task tags need to be unique:",
             style="red bold",
         )
         console.print(
-            f"  current setting: [bold]`{config['task_open']}` / `{config['task_close']}`[/]"
+            f"  current setting: [bold]`{config.tasks.open}` / `{config.tasks.close}`[/]"
         )
         ctx.exit(1)
 
-    if config["solution_open"] == config["solution_close"]:
+    if config.solutions.open == config.solutions.close:
         console.print(
             ":cross_mark: opening and closing solution tags need to be unique:",
             style="red bold",
         )
         console.print(
-            f"  current setting: [bold]`{config['solution_open']}` / `{config['solution_close']}`[/]"
+            f"  current setting: [bold]`{config.solutions.open}` / `{config.solutions.close}`[/]"
         )
         ctx.exit(1)
 
@@ -248,6 +257,14 @@ def cli(
     if not config["output_dir"]:
         config["output_dir"] = source.parent / __cmdname__
     output_dir = config["output_dir"] = resolve_path(config["output_dir"])
+
+    if output_dir.is_relative_to(source):
+        console.print(
+            ":cross_mark: output directory may not be inside the project folder:",
+            style="red bold",
+        )
+        console.print(f"  current setting: [path]{output_dir}[/]")
+        ctx.exit(1)
 
     if project_root and source.parent.is_relative_to(project_root):
         output_dir = config["output_dir"] = output_dir / source.parent.relative_to(
