@@ -1,0 +1,18 @@
+output_dir = "out"
+name_format = "{project}-{version}"
+files_cache = "libs"
+
+[sources]
+include = ["*.java", "*.txt"]
+exclude = ["*.md"]
+
+[zip]
+create = true
+dir = "out/zip"
+
+[solutions]
+suffix = "Loesung"
+
+[[files]]
+name = ".gitignore"
+source = "files/.gitignore"

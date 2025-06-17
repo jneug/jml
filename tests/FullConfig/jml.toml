@@ -1,0 +1,52 @@
+
+name = "FullConfig"
+name_format = "{project}-{version}"
+project_root = ""
+output_dir = "../out"
+clear = true
+
+[sources]
+include = ["-*.java", "*.txt", "-foo.txt", "\\-abc.md"]
+exclude = ["*.md", "foo.txt", "-Thumbs.db"]
+encoding = "utf-8"
+keep_empty = true
+keep_empty_folders = true
+
+[zip]
+create = true
+only_zip = false
+dir = "out/zip"
+
+[tasks]
+open = "/*aufgabe*"
+close = "*aufgabe*/"
+line.prefix = "// TODO: "
+line.replace = "// AUFGABE: "
+
+[solutions]
+delete = false
+open = "//<loesung>"
+close = "//</loesung>"
+suffix = "Loesung"
+line.prefix = "return"
+# line.replace = ""
+
+[[versions]]
+no = 1
+name = "Version_1"
+
+[[versions]]
+no = 2
+name = "Version_Zwei"
+
+[[files]]
+name = "+libs/junit.jar"
+source = "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar"
+checksum = "d98a9a02a99a9acd22d7653cbcc1f31f"
+checksum_method = "md5"
+
+[[files]]
+name = "+libs/hamcrest-core.jar"
+source = "https://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/3.0/hamcrest-core-3.0.jar"
+checksum = "b78a3a81692f421cc01fc17ded9a45e9fb6f3949c712f8ec4d01da6b8c06bc6e"
+checksum_method = "sha256"

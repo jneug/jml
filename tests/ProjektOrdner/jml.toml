@@ -1,10 +1,19 @@
-task_comment_prefix = "/// TODO: "
+task_comment_prefix = "/\\/\\/ TODO: /\\/\\/ AUFGABE: /"
+
+name = "Maeusekampf"
 project_root = ".."
 output_dir = "../out"
-task_open = "/*aufgabe*"
-task_close = "*aufgabe*/"
-solution_comment_prefix = "return"
+
+[sources]
 encoding = "iso-8859-1"
-name = "Maeusekampf"
-"-include" = ["*.txt"]
-"+additional files" = ["FooBar.txt"]
+
+[tasks]
+open = "/*aufgabe*"
+close = "*aufgabe*/"
+line.prefix = "// TODO: "
+line.replace = "// AUFGABE: "
+
+[solution]
+open = "//<loesung>"
+close = "//</loesung>"
+prefix = "return"
