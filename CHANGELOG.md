@@ -6,11 +6,19 @@ und diese Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
 - Rewrites and refactorings introducing some incompatibilities:
 	- Configuration files now use the toml format anf are stored in `jml.toml` files.
 	- The user configuration was moved from `~/.jml` to `~/.config/jml.toml`.
 	- Config keys now use underscores instead of spaces.
+	- `additional files` was removed in favor of a more powerful `files` configuration.
+	- `task_*` and `soulution_*` configs moved to separate sections.
 - Development now uses `uv` instead of `poetry`.
+
+### Added
+- `files` configuration now allows downloading files from the web into projects.
+- `versions` key allows custom configurations for individual versions.
+
 
 ## [0.3.6] - 2022-03-05
 ### Fixed
