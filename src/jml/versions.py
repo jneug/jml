@@ -6,17 +6,21 @@ from pathlib import Path
 import typing as t
 import zipfile
 import logging
+import tempfile
+from collections.abc import Iterable
+
+from .util import resolve_path, is_url
+from jml import __cmdname__, __version__
 
 from rich.console import Console
 
 from .util import match_patterns
 from .config import CONFIG_FILE, ConfigDict
-from .files import process_files
+from .files import copy_file, download_file, verify_download, make_dirs
 
 # Some constants
 RE_VERSION = re.compile(r"^\d+$")
 RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
-RE_REPLACE = re.compile(r"^(?<!\\)/(.*?)(?<!\\)/(.*)(?<!\\)/$")
 
 ML_INT = -1
 
@@ -351,8 +355,55 @@ def remove_path(path: Path, dry_run: bool = False) -> None:
         logger.debug(f"deleted {path!s}")
 
 
-def make_dirs(path: Path, dry_run: bool = False, exist_ok: bool = True) -> None:
-    if not dry_run:
-        path.mkdir(exist_ok=exist_ok, parents=True)
+def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
+    if "files" in config:
+        if "files_cache" in config:
+            file_cache = Path(config["files_cache"])
+        else:
+            # temporary cache folder to prevent duplicate downloads
+            file_cache = Path(tempfile.gettempdir()) / __cmdname__ / __version__
+        file_cache.mkdir(parents=True, exist_ok=True)
+
+        for file in config["files"]:
+            file["source_path"] = resolve_path(file["source"])
+            file["target_path"] = resolve_path(file["name"], root=output_dir)
+
+            logger.debug(f"processing {file['source']}")
+            if processed_file := process_file(file, config, cache=file_cache):
+                yield processed_file
+
+
+def process_file(file: dict, config: dict, cache: Path) -> Path:
+    if is_url(file["source"]):
+        if config["dry_run"]:
+            logger.debug(
+                f"downloading file from {file['source']} to {file['target_path']}"
+            )
+        else:
+            if (
+                download_file(file["source"], file["target_path"], cache=cache)
+                and "checksum" in file
+            ):
+                if not verify_download(
+                    file["target_path"],
+                    file["checksum"],
+                    method=file.get("checksum_method") or "sha256",
+                ):
+                    logger.warning(
+                        f"failed to verify checksum for {file['target_path']} "
+                    )
+                    file["target_path"].unlink()
+                    return None
+                else:
+                    logger.debug(f"verified checksum for {file['target_path']} ")
+        return file["target_path"]
+    elif file["source_path"].exists():
+        if config["dry_run"]:
+            logger.debug(
+                f"copying file from {file['source_path']} to {file['target_path']}"
+            )
+        else:
+            copy_file(file["source_path"], file["target_path"], cache=cache)
+        return file["target_path"]
     else:
-        logger.debug(f"created directory {path!s}")
+        return None

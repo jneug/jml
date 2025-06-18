@@ -2,70 +2,13 @@ from pathlib import Path
 import urllib.parse
 import urllib.request
 import shutil
-import tempfile
 import logging
 import hashlib
-from collections.abc import Iterable
-
-from .util import resolve_path, is_url
-from jml import __cmdname__, __version__
+import io
+import typing as t
 
 
 logger = logging.getLogger("jml")
-
-
-def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
-    if "files" in config:
-        if "files_cache" in config:
-            file_cache = Path(config["files_cache"])
-        else:
-            # temporary cache folder to prevent duplicate downloads
-            file_cache = Path(tempfile.gettempdir()) / __cmdname__ / __version__
-        file_cache.mkdir(parents=True, exist_ok=True)
-
-        for file in config["files"]:
-            file["source_path"] = resolve_path(file["source"])
-            file["target_path"] = resolve_path(file["name"], root=output_dir)
-
-            logger.debug(f"processing {file['source']}")
-            if processed_file := process_file(file, config, cache=file_cache):
-                yield processed_file
-
-
-def process_file(file: dict, config: dict, cache: Path) -> Path:
-    if is_url(file["source"]):
-        if config["dry_run"]:
-            logger.debug(
-                f"downloading file from {file['source']} to {file['target_path']}"
-            )
-        else:
-            if (
-                download_file(file["source"], file["target_path"], cache=cache)
-                and "checksum" in file
-            ):
-                if not verify_download(
-                    file["target_path"],
-                    file["checksum"],
-                    method=file.get("checksum_method") or "sha256",
-                ):
-                    logger.warning(
-                        f"failed to verify checksum for {file['target_path']} "
-                    )
-                    file["target_path"].unlink()
-                    return None
-                else:
-                    logger.debug(f"verified checksum for {file['target_path']} ")
-        return file["target_path"]
-    elif file["source_path"].exists():
-        if config["dry_run"]:
-            logger.debug(
-                f"copying file from {file['source_path']} to {file['target_path']}"
-            )
-        else:
-            copy_file(file["source_path"], file["target_path"], cache=cache)
-        return file["target_path"]
-    else:
-        return None
 
 
 def copy_file(source: Path, target: Path, cache: Path) -> bool:
@@ -87,7 +30,13 @@ def copy_file(source: Path, target: Path, cache: Path) -> bool:
     return True
 
 
-def download_file(url: str, target: Path, cache: Path) -> bool:
+def download_file(
+    url: str,
+    target: Path,
+    cache: Path,
+    checksum: str | None = None,
+    checksum_method: str = "sha256",
+) -> bool:
     url_parsed = urllib.parse.urlparse(url)
     file_name = Path(url_parsed.path).name
 
@@ -98,6 +47,11 @@ def download_file(url: str, target: Path, cache: Path) -> bool:
     # load file into cache
     try:
         source, _ = urllib.request.urlretrieve(url, cache / file_name)
+
+        if checksum:
+            if not verify_download(source, checksum, method=checksum_method):
+                return False
+
         copy_file(source, target, cache)
         logger.debug(f"downloaded file {url} to {target}")
         return True
