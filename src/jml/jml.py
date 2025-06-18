@@ -16,7 +16,6 @@ from .config import (
     load_options_config,
     load_config,
     resolve_source_sets,
-    ConfigDict,
 )
 from .versions import create_solution, create_version
 
