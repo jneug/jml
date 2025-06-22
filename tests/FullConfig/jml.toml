@@ -15,7 +15,7 @@ keep_empty_folders = true
 [zip]
 create = true
 only_zip = false
-dir = "out/zip"
+dir = "../out/zip"
 
 [tasks]
 open = "/*aufgabe*"
