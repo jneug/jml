@@ -1,0 +1,14 @@
+site_name: Java Musterlösung (jml)
+site_author: J. Neugebauer
+repo_name: https://github.com/jneug/jml
+repo_name: jneug/jml
+
+docs_dir: docs/src
+site_dir: docs/site
+theme:
+  name: mkdocs
+  locale: de
+nav:
+  - Schnellstart: 'index.md'
+  - Konfiguration: 'configuration.md'
+  - Examples: 'examples.md'
