@@ -2,30 +2,25 @@
 
 import logging
 from datetime import datetime
-
 from pathlib import Path
 
 import click
 
-
 # Current version number
 from jml import __cmdname__, __version__
-from .util import resolve_path, configure_logger
+
 from .config import (
+    load_config,
     load_default_config,
     load_options_config,
-    load_config,
     resolve_source_sets,
 )
-from .versions import create_solution, create_version
-
 from .console import console
+from .utils import configure_logger, resolve_path, files
+from .versions import create_solution, create_version
 
 # init logger
 logger = logging.getLogger("jml")
-
-# init global console object
-markup = {"extra": {"markup": True}}
 
 
 @click.command(
@@ -190,6 +185,7 @@ def cli(
     )
 
     if dry_run:
+        files.enable_dry_run()
         console.print(
             "  this is a preview of the compilation process",
             style="red italic",
@@ -275,10 +271,10 @@ def cli(
         console
         logger.debug("config loaded:")
         for k, v in sorted(config.items()):
-            logger.debug(f"  [blue]{k}[/] = {v!r}", **markup)
+            logger.debug(f"  [blue]{k}[/] = {v!r}")
 
     #  run jml
-    logger.info(f"compiling source project [yellow bold]{config['name']}[/]", **markup)
+    logger.info(f"compiling source project [yellow bold]{config['name']}[/]")
     logger.info(f"from {source}")
     logger.info(f"  to {output_dir}")
 

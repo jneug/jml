@@ -1,22 +1,17 @@
+import logging
 import re
-import shutil
-import io
+import tempfile
+import typing as t
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-import typing as t
-import zipfile
-import logging
-import tempfile
-from collections.abc import Iterable
-
-from .util import resolve_path, is_url
-from jml import __cmdname__, __version__
 
 from rich.console import Console
 
-from .util import match_patterns
+from jml import __cmdname__, __version__
+
 from .config import CONFIG_FILE, ConfigDict
-from .files import copy_file, download_file, verify_download, make_dirs
+from .utils import files, is_url, resolve_path, match_patterns
 
 # Some constants
 RE_VERSION = re.compile(r"^\d+$")
@@ -25,6 +20,8 @@ RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
 ML_INT = -1
 
 logger = logging.getLogger("jml")
+
+# TODO: Add try-catch error handling and output
 
 
 def create_solution(config: dict, console: Console = None) -> set[int]:
@@ -44,73 +41,78 @@ def create_version(
     # initialize some local vars
     console = console or Console()
 
-    source_dir = config["source_dir"]
-    output_dir = config["output_dir"]
-    project_name = config["name"]
+    # build version specific configuration
+    vconfig = ConfigDict(config)
+    vconfig.project_name = vconfig.name
+    vconfig.no = version
+    vconfig.is_ml = version == ML_INT
+    vconfig.output_root = vconfig.output_dir
 
-    dry_run = config["dry_run"]
-    is_ml = version == ML_INT
+    # prepare output name
+    if vconfig.is_ml:
+        vconfig.name = vconfig.name_format.format(
+            project=vconfig.project_name,
+            version=vconfig.solutions.suffix,
+            date=datetime.now(),
+        )
+    elif version == 0:
+        vconfig.name = vconfig.project_name
+    else:
+        vconfig.name = vconfig.name_format.format(
+            project=vconfig.project_name, version=version, date=datetime.now()
+        )
+    vconfig.output_dir = vconfig.output_dir / vconfig.name
 
-    version_config = ConfigDict(config)
-    version_config.merge(
+    # merge in version specific config
+    vconfig.merge(
         next(
             (cfg for cfg in config.versions if "no" in cfg and cfg["no"] == version),
             dict(),
         )
     )
 
-    versions = set()
-
-    # prepare output name
-    if is_ml:
-        ver_name = version_config.name_format.format(
-            project=project_name,
-            version=config.solutions.suffix,
-            date=datetime.now(),
-        )
-    elif version == 0:
-        ver_name = project_name
-    else:
-        ver_name = version_config.name_format.format(
-            project=project_name, version=version, date=datetime.now()
-        )
-    output_dir = output_dir / ver_name
-
-    if source_dir == output_dir:
+    if vconfig.source_dir == vconfig.output_dir:
         logger.warning(
-            f"skipped [ver]{ver_name}[/] (version [ver]{version}[/])\noutput path would override source folder at [path]{source_dir}[/]"
+            f"skipped [ver]{vconfig.name}[/] (version [ver]{vconfig.no}[/])\noutput path would override source folder at [path]{vconfig.source_dir}[/]"
         )
         return set()
 
     # prepare output folders
-    if output_dir.is_dir():
-        if config["clear"]:
-            remove_path(output_dir, dry_run=dry_run)
-            logger.info(f"removed target directory [path]{output_dir}[/]")
+    if vconfig.output_dir.is_dir():
+        if vconfig.clear:
+            files.remove_path(vconfig.output_dir)
+            logger.info(f"removed target directory [path]{vconfig.output_dir}[/]")
         else:
-            logger.debug(f"using existing target directory at [path]{output_dir}[/]")
-    if not output_dir.is_dir():
-        make_dirs(output_dir, dry_run=dry_run)
-        logger.info(f"created target directory [path]{output_dir}[/]")
+            logger.debug(
+                f"using existing target directory at [path]{vconfig.output_dir}[/]"
+            )
+    if not vconfig.output_dir.is_dir():
+        files.make_dirs(vconfig.output_dir)
+        logger.info(f"created target directory [path]{vconfig.output_dir}[/]")
 
     # extract some config options to local scope
     include = config.sources.include
     exclude = config.sources.exclude
 
     keep_empty_files = config.sources.keep_empty
+    keep_empty_dirs = config.sources.keep_empty_dirs
+
+    versions = set()
 
     # copy files in the source
-    console.print(f"creating version [ver]{ver_name}[/] in [path]{output_dir}[/]")
-    for root, dirs, files in source_dir.walk():
-        outroot = output_dir / root.relative_to(source_dir)
-        make_dirs(outroot, dry_run=dry_run)
+    console.print(
+        f"creating version [ver]{vconfig.name}[/] in [path]{vconfig.output_dir}[/]"
+    )
+    for root, dirs, source_files in vconfig.source_dir.walk():
+        outroot = vconfig.output_dir / root.relative_to(vconfig.source_dir)
+        files.make_dirs(outroot)
 
-        for file in files:
+        for file in source_files:
             fullpath = root / file
             fulloutpath = outroot / file
 
-            relpath = fullpath.relative_to(source_dir)
-            reloutpath = fulloutpath.relative_to(output_dir.parent)
+            relpath = fullpath.relative_to(vconfig.source_dir)
+            reloutpath = fulloutpath.relative_to(vconfig.output_dir.parent)
 
             if file == CONFIG_FILE:
                 logger.debug(f"skipped config file [file]{CONFIG_FILE}[/]")
@@ -120,31 +122,38 @@ def create_version(
                 continue
             elif match_patterns(file, include):
                 not_empty, _versions = compile_file(
-                    version, fullpath, fulloutpath, version_config
+                    version, fullpath, fulloutpath, vconfig
                 )
                 versions = versions.union(_versions)
 
                 if not not_empty and not keep_empty_files:
-                    remove_path(fulloutpath, dry_run=dry_run)
+                    files.remove_path(fulloutpath)
                     logger.info(f"{relpath!s:>32} X  (empty)")
                 else:
                     logger.info(f"{relpath!s:>32} !> {reloutpath!s}")
             else:
-                copy_path(fullpath, fulloutpath, dry_run=dry_run)
+                files.copy_path(fullpath, fulloutpath)
                 logger.info(f"{relpath!s:>32} -> {reloutpath!s}")
 
     # process additional files
-    for f in process_files(output_dir, version_config):
+    for f in process_files(vconfig.output_dir, vconfig):
         logger.info(f"{f!s:>32} -> {f!s}")
 
-    if is_ml and config.solutions.delete:
-        remove_path(output_dir, dry_run=dry_run)
-        logger.info(f"removed solution directory at [path]{output_dir}[/]")
-    elif config.zip.create or config.zip.only_zip:
-        create_zip(output_dir, version_config)
-        if config.zip.only_zip:
-            remove_path(output_dir, dry_run=dry_run)
-            logger.info(f"removed version directory at [path]{output_dir}[/]")
+    if vconfig.is_ml and vconfig.solutions.delete:
+        files.remove_path(vconfig.output_dir)
+        logger.info(f"removed solution directory at [path]{vconfig.output_dir}[/]")
+    elif vconfig.zip.create or vconfig.zip.only_zip:
+        try:
+            zip_file = files.create_zip(vconfig.output_dir, dest=vconfig.zip.dir)
+            logger.info(f"created zip file at {zip_file}")
+        except OSError as oserr:
+            logger.warning(f"could not create zip ({oserr.strerror})")
+        finally:
+            if vconfig.zip.only_zip:
+                files.remove_path(vconfig.output_dir)
+                logger.info(
+                    f"removed version directory at [path]{vconfig.output_dir}[/]"
+                )
 
     if not versions:
         versions.add(0)
@@ -160,8 +169,6 @@ def compile_file(
     """
 
     # extract some config options to local scope
-    dry_run = config["dry_run"]
-
     tag_open = config.tasks.open
     tag_close = config.tasks.close
 
@@ -175,12 +182,8 @@ def compile_file(
     is_ml = version == ML_INT
 
     lines_written = 0
-    with open_path(
-        source, "r", encoding=config.sources.encoding, dry_run=dry_run
-    ) as inf:
-        with open_path(
-            target, encoding=config.sources.encoding, dry_run=dry_run
-        ) as outf:
+    with files.open_path(source, "r", encoding=config.sources.encoding) as inf:
+        with files.open_path(target, encoding=config.sources.encoding) as outf:
             skip = False
             transform = None
             line = inf.readline()
@@ -225,45 +228,6 @@ def compile_file(
                         lines_written += 1
                 line = inf.readline()
     return (lines_written > 0, versions)
-
-
-def create_zip(path: str, config: ConfigDict) -> None:
-    """Creates a zip file from a project version directory."""
-    dry_run = config["dry_run"]
-
-    if config.zip.create or config.zip.only_zip:
-        zip_dir, zip_name = path.parent, path.name
-
-        # prepare output directory
-        if not zip_dir.exists():
-            make_dirs(zip_dir, dry_run=dry_run)
-
-        # prepare output filename
-        zip_file = zip_dir / f"{zip_name}.zip"
-        if zip_file.exists():
-            if zip_file.is_file():
-                remove_path(zip_file, dry_run=dry_run)
-            elif zip_file.is_dir():
-                logger.warning(
-                    f"directory found at {zip_file}! unable to create zip file."
-                )
-                return
-
-        # create zip file
-        if not dry_run:
-            try:
-                with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
-                    for root, dirs, files in path.walk():
-                        for file in files:
-                            filepath = root / file
-                            relpath = filepath.relative_to(path)
-                            zipf.write(filepath, arcname=relpath)
-            except OSError as oserr:
-                logger.warning(
-                    f"  could not create zip at {zip_file} ({oserr.strerror})"
-                )
-                return
-        logger.info(f"created zip file at {zip_file}")
 
 
 def create_transform(version: int, config: ConfigDict) -> t.Callable:
@@ -322,39 +286,6 @@ def test_version(version1: str | int, version2: str | int) -> bool:
     return False
 
 
-# Utilities for file operations
-## just wrappers that respect DRY_RUN settings
-def open_path(
-    path: Path, mode: str = "w", encoding: str = "utf-8", dry_run: bool = False
-) -> t.IO[t.Any]:
-    """Opens a file for reading/writing."""
-    if mode[0] == "w" and dry_run:
-        logger.debug(f"created file {path!s}")
-        return io.StringIO()
-    else:
-        return path.open(mode, encoding=encoding)
-
-
-def copy_path(source: Path, target: Path, dry_run: bool = False) -> None:
-    if not dry_run:
-        if source.is_dir():
-            shutil.copytree(source, target / source.name)
-        else:
-            shutil.copy(source, target)
-    else:
-        logger.debug(f"copied {source!s} to {target!s}")
-
-
-def remove_path(path: Path, dry_run: bool = False) -> None:
-    if not dry_run:
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
-    else:
-        logger.debug(f"deleted {path!s}")
-
-
 def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
     if "files" in config:
         if "files_cache" in config:
@@ -375,35 +306,20 @@ def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
 
 def process_file(file: dict, config: dict, cache: Path) -> Path:
     if is_url(file["source"]):
-        if config["dry_run"]:
-            logger.debug(
-                f"downloading file from {file['source']} to {file['target_path']}"
+        try:
+            files.download_file(
+                file["source"],
+                file["target_path"],
+                cache=cache,
+                checksum=file.get("checksum"),
+                checksum_method=file.get("checksum_mode", "sha256"),
             )
-        else:
-            if (
-                download_file(file["source"], file["target_path"], cache=cache)
-                and "checksum" in file
-            ):
-                if not verify_download(
-                    file["target_path"],
-                    file["checksum"],
-                    method=file.get("checksum_method") or "sha256",
-                ):
-                    logger.warning(
-                        f"failed to verify checksum for {file['target_path']} "
-                    )
-                    file["target_path"].unlink()
-                    return None
-                else:
-                    logger.debug(f"verified checksum for {file['target_path']} ")
+        except OSError as oserr:
+            logger.warning(f"failed to download file from{file['source']}: {oserr}")
+            return None
         return file["target_path"]
     elif file["source_path"].exists():
-        if config["dry_run"]:
-            logger.debug(
-                f"copying file from {file['source_path']} to {file['target_path']}"
-            )
-        else:
-            copy_file(file["source_path"], file["target_path"], cache=cache)
+        files.copy_path(file["source_path"], file["target_path"], cache=cache)
         return file["target_path"]
     else:
         return None

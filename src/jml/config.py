@@ -7,7 +7,7 @@ from pathlib import Path
 
 import toml
 
-from .util import is_url, resolve_path
+from .utils import is_url, resolve_path
 
 CONFIG_FILE = "jml.toml"
 
