@@ -116,22 +116,22 @@
 dazugehörigen <a href="http://github.com/jneug/schule-versionen">Projektversionen</a>.</p>
 <h2 id="installation">Installation</h2>
 <p>Die Installation wird wie gewohnt mit pip durchgeführt:</p>
-<p><code>console
-$ pip3 install jml</code></p>
+<pre><code class="language-console">$ pip3 install jml
+</code></pre>
 <p>Bei erfolgreicher Installation ist nun das <code>jml</code> Kommando verfügbar.</p>
-<p><code>console
-$ jml --version
-jml, version 0.3.6</code></p>
+<pre><code class="language-console">$ jml --version
+jml, version 0.3.6
+</code></pre>
 <p><code>jml</code> benötigt Python 3.8 oder neuer.</p>
 <h3 id="manuelle-installation">Manuelle Installation</h3>
 <p><code>jml</code> kann auch ohne <code>pip</code> einfach als Skriptdatei genutzt werden. Es werden keine externen Abhängigkeiten genutzt. Dazu die aktuelle Version der Datei <code>jml.py &lt;https://github.com/jneug/jml/blob/main/src/jml/jml.py&gt;</code>_ aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:</p>
-<p><code>console
-$ python3 jml.py --version
-jml, version 0.3.6</code></p>
+<pre><code class="language-console">$ python3 jml.py --version
+jml, version 0.3.6
+</code></pre>
 <h2 id="benutzung">Benutzung</h2>
 <p><code>jml</code> benötigt im einfachsten Fall den Pfad des Basisprojektes und den Pfad des Ausgabeordners:</p>
-<p><code>console
-$ jml pfad/zum/Basisprojekt --out pfad/zum/ausgabeordner</code></p>
+<pre><code class="language-console">$ jml pfad/zum/Basisprojekt --out pfad/zum/ausgabeordner
+</code></pre>
 <p>Nach Ausführung befinden sich in <code>pfad/zum/ausgabeordner</code> die Musterlösung und die Projektversionen.</p>
 <p>Die Inhalte und Anzahl an Versionen werden durch die Inhalte der Dateien im Basisprojekt bestimmt.</p>
 <p>Angenommen in <code>Basisprojekt</code> liegt eine Datei mit dem Namen <code>Beispiel.java</code> mit folgendem Inhalt:</p>
@@ -153,17 +153,21 @@ class Beispiel {
     //*ml
 }
 </code></pre>
-<p>}
-``</p>
-<p>Dann erzeugt <code>jml</code> diese Ordnerstruktur in <code>pfad/zum/ausgabeordner</code></p>
-<pre><code>pfad/zum/ausgabeordner/
+<p>}</p>
+<pre><code>
+Dann erzeugt `jml` diese Ordnerstruktur in `pfad/zum/ausgabeordner`
+
+</code></pre>
+<p>pfad/zum/ausgabeordner/
 ├── Basisprojekt/
 │   └── Beispiel.java
 └── Basisprojekt_ML/
-    └── Beispiel.java
-</code></pre>
-<p>Inhalt von <code>Basisprojekt_ML/Beispiel.java</code>:</p>
-<pre><code class="language-java">
+    └── Beispiel.java</p>
+<pre><code>
+Inhalt von `Basisprojekt_ML/Beispiel.java`:
+
+```java
+
     class Beispiel {
         private int zahl;
 
@@ -171,11 +175,9 @@ class Beispiel {
             return zahl + pAndereZahl;
         }
     }
-
-Inhalt von `Basisprojekt/Beispiel.java`:
-
-```java
-class Beispiel {
+</code></pre>
+<p>Inhalt von <code>Basisprojekt/Beispiel.java</code>:</p>
+<pre><code class="language-java">class Beispiel {
     // TODO: Erstelle eine Objektvariable &quot;zahl&quot; vom Typ int
 
     public int add( int pAndereZahl ) {
@@ -396,5 +398,5 @@ close=*aufgabe*/
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-06-22 19:50:08.046858+00:00
+Build Date UTC : 2025-06-22 19:51:55.221158+00:00
 -->
