@@ -2,6 +2,9 @@ set positional-arguments := true
 
 root := justfile_directory()
 
+run *args:
+  uv run jml {{ args }}
+
 [private]
 default:
     @just --list --unsorted
