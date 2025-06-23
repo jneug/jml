@@ -3,11 +3,11 @@ from rich.theme import Theme
 
 console_theme = Theme(
     {
-        "path": "cyan",
-        "file": "purple",
-        "name": "yellow bold",
-        "ver": "orange1 bold",
-        "err": "red bold",
+        "jml.path": "cyan",
+        "jml.file": "purple bold",
+        "jml.name": "yellow bold",
+        "jml.ver": "orange1 bold",
+        "jml.err": "red bold",
         #
         "repr.number": "",
         "repr.number_complex": "",
@@ -17,4 +17,4 @@ console_theme = Theme(
 )
 
 
-console = Console(theme=console_theme)
+console = Console(theme=console_theme, highlight=False)

@@ -48,6 +48,9 @@ def create_version(
     vconfig.is_ml = version == ML_INT
     vconfig.output_root = vconfig.output_dir
 
+    def relp(p: Path) -> Path:
+        return p.relative_to(vconfig.project_root)
+
     # prepare output name
     if vconfig.is_ml:
         vconfig.name = vconfig.name_format.format(
@@ -73,7 +76,7 @@ def create_version(
 
     if vconfig.source_dir == vconfig.output_dir:
         logger.warning(
-            f"skipped [ver]{vconfig.name}[/] (version [ver]{vconfig.no}[/])\noutput path would override source folder at [path]{vconfig.source_dir}[/]"
+            f"skipped [jml.ver]{vconfig.name}[/] (version [jml.ver]{vconfig.no}[/])\noutput path would override source folder at [jml.path]{relp(vconfig.source_dir)}[/]"
         )
         return set()
 
@@ -81,27 +84,29 @@ def create_version(
     if vconfig.output_dir.is_dir():
         if vconfig.clear:
             files.remove_path(vconfig.output_dir)
-            logger.info(f"removed target directory [path]{vconfig.output_dir}[/]")
+            logger.info(
+                f"removed target directory [jml.path]{relp(vconfig.output_dir)}[/]"
+            )
         else:
             logger.debug(
-                f"using existing target directory at [path]{vconfig.output_dir}[/]"
+                f"using existing target directory at [jml.path]{relp(vconfig.output_dir)}[/]"
             )
     if not vconfig.output_dir.is_dir():
         files.make_dirs(vconfig.output_dir)
-        logger.info(f"created target directory [path]{vconfig.output_dir}[/]")
+        logger.info(f"created target directory [jml.path]{relp(vconfig.output_dir)}[/]")
 
     # extract some config options to local scope
     include = config.sources.include
     exclude = config.sources.exclude
 
-    keep_empty_files = config.sources.keep_empty
+    keep_empty_files = config.sources.keep_empty_files
     keep_empty_dirs = config.sources.keep_empty_dirs
 
     versions = set()
 
     # copy files in the source
     console.print(
-        f"creating version [ver]{vconfig.name}[/] in [path]{vconfig.output_dir}[/]"
+        f"creating version [jml.ver]{vconfig.name}[/] in [jml.path]{relp(vconfig.output_dir)}[/]"
     )
     for root, dirs, source_files in vconfig.source_dir.walk():
         outroot = vconfig.output_dir / root.relative_to(vconfig.source_dir)
@@ -115,10 +120,10 @@ def create_version(
             reloutpath = fulloutpath.relative_to(vconfig.output_dir.parent)
 
             if file == CONFIG_FILE:
-                logger.debug(f"skipped config file [file]{CONFIG_FILE}[/]")
+                logger.debug(f"[jml.file]{relpath!s:>32}[/] [red bold]X[/]  (skipped)")
                 continue
             elif match_patterns(file, exclude):
-                logger.info(f"{relpath!s:>32} X")
+                logger.info(f"[jml.file]{relpath!s:>32}[/] [red bold]X[/]")
                 continue
             elif match_patterns(file, include):
                 not_empty, _versions = compile_file(
@@ -128,12 +133,16 @@ def create_version(
 
                 if not not_empty and not keep_empty_files:
                     files.remove_path(fulloutpath)
-                    logger.info(f"{relpath!s:>32} X  (empty)")
+                    logger.info(f"[jml.file]{relpath!s:>32}[/] [red bold]X[/]  (empty)")
                 else:
-                    logger.info(f"{relpath!s:>32} !> {reloutpath!s}")
+                    logger.info(
+                        f"[jml.file]{relpath!s:>32}[/] [yellow bold]!>[/] [jml.path]{reloutpath!s}[/]"
+                    )
             else:
                 files.copy_path(fullpath, fulloutpath)
-                logger.info(f"{relpath!s:>32} -> {reloutpath!s}")
+                logger.info(
+                    f"[jml.file]{relpath!s:>32}[/] [green bold]->[/] [jml.path]{reloutpath!s}[/]"
+                )
 
     # process additional files
     for f in process_files(vconfig.output_dir, vconfig):
@@ -141,18 +150,20 @@ def create_version(
 
     if vconfig.is_ml and vconfig.solutions.delete:
         files.remove_path(vconfig.output_dir)
-        logger.info(f"removed solution directory at [path]{vconfig.output_dir}[/]")
+        logger.info(
+            f"removed solution directory at [jml.path]{relp(vconfig.output_dir)}[/]"
+        )
     elif vconfig.zip.create or vconfig.zip.only_zip:
         try:
             zip_file = files.create_zip(vconfig.output_dir, dest=vconfig.zip.dir)
-            logger.info(f"created zip file at {zip_file}")
+            logger.info(f"created zip file at {relp(zip_file)}")
         except OSError as oserr:
             logger.warning(f"could not create zip ({oserr.strerror})")
         finally:
             if vconfig.zip.only_zip:
                 files.remove_path(vconfig.output_dir)
                 logger.info(
-                    f"removed version directory at [path]{vconfig.output_dir}[/]"
+                    f"removed version directory at [jml.path]{relp(vconfig.output_dir)}[/]"
                 )
 
     if not versions:
@@ -299,7 +310,7 @@ def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
             file["source_path"] = resolve_path(file["source"])
             file["target_path"] = resolve_path(file["name"], root=output_dir)
 
-            logger.debug(f"processing [path]{file['name']}[/]")
+            logger.debug(f"processing /{file['name']}")
             if processed_file := process_file(file, config, cache=file_cache):
                 yield processed_file
 
@@ -316,7 +327,7 @@ def process_file(file: dict, config: dict, cache: Path) -> Path:
             )
         except OSError as oserr:
             logger.warning(
-                f"failed to download file from [path]{file['source']}[/]: [err]{oserr}[/]"
+                f"failed to download file from [jml.path]{file['source']}[/]: [jml.err]{oserr}[/]"
             )
             return None
         return file["target_path"]

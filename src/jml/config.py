@@ -60,9 +60,15 @@ class ConfigDict(MutableMapping):
         except KeyError as e:
             raise AttributeError(attr) from e
 
+    def ensure_dict(self, key: str) -> None:
+        if key not in self:
+            self[key] = ConfigDict()
+
     def merge(self, other: Mapping) -> None:
         for key, value in other.items():
-            if (
+            if key in ("include", "exclude"):
+                self.resolve_source_set(key, value)
+            elif (
                 key in self
                 and isinstance(self[key], ConfigDict)
                 and isinstance(value, Mapping)
@@ -94,6 +100,26 @@ class ConfigDict(MutableMapping):
                 self[key] = list(value)
             elif key not in self:
                 self[key] = ConfigDict(value) if isinstance(value, Mapping) else value
+
+    def resolve_paths(self, root: Path) -> None:
+        pass
+
+    def resolve_source_set(self, key: str, source_set: Sequence) -> None:
+        self_set = self.get(key, set())
+
+        for pattern in source_set:
+            if pattern.startswith("-"):
+                pattern = pattern[1:]
+                self_set.discard(pattern)
+            else:
+                if pattern[0:2] == "\\-":
+                    pattern = pattern[1:]
+                self_set.add(pattern)
+
+        self[key] = set(self_set)
+
+    def __rich_repr__(self):
+        yield from sorted(self.items(), key=lambda i: i[0])
 
 
 # init logger
@@ -187,14 +213,31 @@ def load_options_config(options: dict) -> ConfigDict:
     Creates a compatible config dictionary from the click options
     passed to the main click command.
     """
-    options = {k: v for k, v in options.items() if v}
+    options_config = ConfigDict()
+    for k, v in options.items():
+        if v is not None:
+            if k.startswith("task"):
+                options_config.ensure_dict("tasks")
+                options_config.tasks[k[5:]] = v
+            elif k.startswith("solution"):
+                options_config.ensure_dict("solutions")
+                options_config.solutions[k[10:]] = v
+            elif k in ("include", "exclude", "encoding"):
+                options_config.ensure_dict("sources")
+                options_config.sources[k] = v
+            elif k == "delete_empty":
+                options_config.ensure_dict("sources")
+                options_config.sources.keep_empty_files = False
+                options_config.sources.keep_empty_dirs = False
+            elif k == "no_clear":
+                options_config.clear = False
+            elif k == "create_zip":
+                options_config.ensure_dict("zip")
+                options_config.zip.create = True
+            elif k == "delete_solution":
+                options_config.ensure_dict("solutions")
+                options_config.solutions.delete = True
+            else:
+                options_config[k] = v
 
-    if "delete_empty" in options:
-        options["keep_empty_files"] = not options["delete_empty"]
-        del options["delete_empty"]
-
-    if "no_clear" in options:
-        options["clear"] = not options["no_clear"]
-        del options["no_clear"]
-
-    return ConfigDict(options)
+    return options_config

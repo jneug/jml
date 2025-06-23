@@ -13,14 +13,10 @@ from .config import (
     load_config,
     load_default_config,
     load_options_config,
-    resolve_source_sets,
 )
 from .console import console
 from .utils import configure_logger, resolve_path, files
 from .versions import create_solution, create_version
-
-# init logger
-logger = logging.getLogger("jml")
 
 
 @click.command(
@@ -179,10 +175,13 @@ def cli(
     #
     **options,
 ) -> None:
-    configure_logger(log_level, debug, dry_run, console=console)
     console.print(
         f"[bold]{__cmdname__}[/] ([logging.keyword]{__version__}[/]) [[log.time]{datetime.now():%H:%M:%S.%f}[/]]"
     )
+
+    # init logger
+    configure_logger(log_level, debug, dry_run, console=console)
+    logger = logging.getLogger("jml")
 
     if dry_run:
         files.enable_dry_run()
@@ -215,7 +214,6 @@ def cli(
     ## load project root config
     config = load_config(project_root, base=config, resolve=True)
     ## load project specific config
-    project_config = resolve_source_sets(project_config, base=config)
     config.merge(project_config)
     ## add cli options to config
     config.merge(load_options_config(options))
@@ -268,19 +266,18 @@ def cli(
 
     # show config for debugging
     if logger.isEnabledFor(logging.DEBUG):
-        console
         logger.debug("config loaded:")
-        for k, v in sorted(config.items()):
-            logger.debug(f"  [blue]{k}[/] = {v!r}")
+        console.print(config, highlight=True)
 
     #  run jml
-    logger.info(f"compiling source project [name]{config['name']}[/]")
-    logger.info(f"from [path]{source}[/]")
-    logger.info(f"  to [path]{output_dir}[/]")
+    console.rule()
+    logger.info(f":thread: compiling source project [name]{config['name']}[/]")
+    logger.info(f"   from [path]{source}[/]")
+    logger.info(f"     to [path]{output_dir}[/]")
 
-    logger.info("creating solution version")
+    logger.info(":thread: Generating solution version..")
     generate_versions = set(ver)
-    versions = create_solution(config)
+    versions = create_solution(config, console=console)
 
     if max(versions) > 0:
         versions = {v + 1 for v in range(max(versions))}
@@ -290,12 +287,12 @@ def cli(
     else:
         generate_versions = versions
     logger.info(
-        f"auto-discovered {len(generate_versions)} of {len(versions)} versions to generate: {generate_versions}"
+        f"auto-discovered {len(generate_versions)} of {len(versions)} versions to generate: [jml.ver]{generate_versions}[/]"
     )
 
     for ver in sorted(generate_versions):
-        logger.info(f"creating version {ver}:")
-        create_version(ver, config)
+        logger.info(f":thread: generating version [jml.ver]{ver}[/]:")
+        create_version(ver, config, console=console)
 
 
 # When run as a single file outside module structure

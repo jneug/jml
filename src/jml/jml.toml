@@ -21,7 +21,7 @@ exclude = [
 ]
 include = ["*.java"]
 encoding = "utf-8"
-keep_empty = true
+keep_empty_files = true
 keep_empty_dirs = true
 
 [zip]
