@@ -65,6 +65,9 @@ def check_cache(path: Path, cache: Path | None) -> Path | None:
             shutil.copytree(path, cache / path.name)
         elif path.is_file():
             shutil.copy(path, cache)
+        else:
+            return None
+        return cache / path.name
 
 
 def clear_cache(path: Path, cache: Path) -> None:
@@ -168,7 +171,7 @@ def download_file(
 
     If `cache` is given it will be checked for a cached version of the file first. If there is non, the file will be downloaded to `cache` first.
 
-    If `checksum` and `checksum_mode` are given, the file hash is verified
+    If `checksum` and `checksum_method` are given, the file hash is verified
     once after download. An already cached version is not verified again.
 
     Args:

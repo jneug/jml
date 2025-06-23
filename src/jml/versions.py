@@ -312,7 +312,7 @@ def process_file(file: dict, config: dict, cache: Path) -> Path:
                 file["target_path"],
                 cache=cache,
                 checksum=file.get("checksum"),
-                checksum_method=file.get("checksum_mode", "sha256"),
+                checksum_method=file.get("checksum_method", "sha256"),
             )
         except OSError as oserr:
             logger.warning(
