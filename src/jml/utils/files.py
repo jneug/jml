@@ -164,7 +164,7 @@ def download_file(
     dest: Path,
     cache: Path | None = None,
     checksum: str | None = None,
-    checksum_method: str = "sha256",
+    checksum_method: str = "sha1",
 ) -> bool:
     """
     Downloads a file from `url` to `dest`.
@@ -179,7 +179,7 @@ def download_file(
         dest (Path): Path to the download destination.
         cache (Path or None): Optional path to a cache directory.
         checksum (str): Optional checksum hash of the file.
-        checksum_method (str): Hashing method used for checksum verification (defaults to `sha256`).
+        checksum_method (str): Hashing method used for checksum verification (defaults to `sha1`).
 
     Returns:
         bool: If the download succeeded (or the file was copied from the cache).
@@ -210,7 +210,7 @@ def download_file(
     return True
 
 
-def verify_checksum(file: Path, checksum: str, method: str = "sha256") -> bool:
+def verify_checksum(file: Path, checksum: str, method: str = "sha1") -> bool:
     with file.open("rb") as f:
         digest = hashlib.file_digest(f, method)
     return digest.hexdigest() == checksum
