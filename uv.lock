@@ -378,11 +378,12 @@ wheels = [
 
 [[package]]
 name = "jml"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "rich" },
+    { name = "toml" },
 ]
 
 [package.dev-dependencies]
@@ -403,6 +404,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.0.3" },
     { name = "rich", specifier = ">=14.0.0" },
+    { name = "toml", specifier = ">=0.10.2" },
 ]
 
 [package.metadata.requires-dev]
