@@ -181,7 +181,7 @@ def cli(
 ) -> None:
     configure_logger(log_level, debug, dry_run, console=console)
     console.print(
-        f"[bold]{__cmdname__}[/] ([yellow]{__version__}[/]) [[cyan]{datetime.now():%H:%M:%S.%f}[/cyan]]"
+        f"[bold]{__cmdname__}[/] ([logging.keyword]{__version__}[/]) [[log.time]{datetime.now():%H:%M:%S.%f}[/]]"
     )
 
     if dry_run:
@@ -274,9 +274,9 @@ def cli(
             logger.debug(f"  [blue]{k}[/] = {v!r}")
 
     #  run jml
-    logger.info(f"compiling source project [yellow bold]{config['name']}[/]")
-    logger.info(f"from {source}")
-    logger.info(f"  to {output_dir}")
+    logger.info(f"compiling source project [name]{config['name']}[/]")
+    logger.info(f"from [path]{source}[/]")
+    logger.info(f"  to [path]{output_dir}[/]")
 
     logger.info("creating solution version")
     generate_versions = set(ver)

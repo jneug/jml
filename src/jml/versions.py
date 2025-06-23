@@ -299,7 +299,7 @@ def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
             file["source_path"] = resolve_path(file["source"])
             file["target_path"] = resolve_path(file["name"], root=output_dir)
 
-            logger.debug(f"processing {file['source']}")
+            logger.debug(f"processing [path]{file['name']}[/]")
             if processed_file := process_file(file, config, cache=file_cache):
                 yield processed_file
 
@@ -315,7 +315,9 @@ def process_file(file: dict, config: dict, cache: Path) -> Path:
                 checksum_method=file.get("checksum_mode", "sha256"),
             )
         except OSError as oserr:
-            logger.warning(f"failed to download file from{file['source']}: {oserr}")
+            logger.warning(
+                f"failed to download file from [path]{file['source']}[/]: [err]{oserr}[/]"
+            )
             return None
         return file["target_path"]
     elif file["source_path"].exists():
