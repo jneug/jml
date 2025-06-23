@@ -7,9 +7,17 @@ default:
     @just --list --unsorted
 
 [group('docs')]
-docs:
-    mkdocs build
+serve:
+    uv run mkdocs serve
 
 [group('docs')]
-serve:
-    mkdocs serve
+docs:
+    uv run mkdocs build
+
+[group('docs')]
+deploy:
+    uv run mkdocs gh-deploy
+
+[group('test')]
+test *args:
+  uv run pytest {{ args }}

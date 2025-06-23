@@ -1,14 +1,45 @@
 site_name: Java Musterlösung (jml)
 site_author: J. Neugebauer
-repo_name: https://github.com/jneug/jml
+repo_url: https://github.com/jneug/jml
 repo_name: jneug/jml
 
 docs_dir: docs/src
 site_dir: docs/site
 theme:
-  name: mkdocs
-  locale: de
+  name: material
+  language: de
+  logo: assets/jml.png
+  features:
+    - content.code.annotate
+    - navigation.top
+    - navigation.tracking
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: light blue
+      accent: green
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
 nav:
-  - Schnellstart: 'index.md'
-  - Konfiguration: 'configuration.md'
-  - Examples: 'examples.md'
+  - Schnellstart: "index.md"
+  - Konfiguration: "configuration.md"
+  - Beispiele: "examples.md"
+  - Referenz: "reference.md"
+
+markdown_extensions:
+  - admonition
+
+plugins:
+  - mkdocstrings

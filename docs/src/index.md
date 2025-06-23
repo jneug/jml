@@ -22,16 +22,16 @@ dazugehörigen [Projektversionen](http://github.com/jneug/schule-versionen).
 
 Die Installation wird wie gewohnt mit pip durchgeführt:
 
-``console
+```console
 $ pip3 install jml
-``
+```
 
 Bei erfolgreicher Installation ist nun das `jml` Kommando verfügbar.
 
-``console
+```console
 $ jml --version
 jml, version 0.3.6
-``
+```
 
 `jml` benötigt Python 3.8 oder neuer.
 
@@ -39,19 +39,19 @@ jml, version 0.3.6
 
 `jml` kann auch ohne `pip` einfach als Skriptdatei genutzt werden. Es werden keine externen Abhängigkeiten genutzt. Dazu die aktuelle Version der Datei `jml.py <https://github.com/jneug/jml/blob/main/src/jml/jml.py>`_ aus dem Repository kopieren und auf der Festplatte speichern. Das Skript kann dann mit Python 3 ausgeführt werden:
 
-``console
+```console
 $ python3 jml.py --version
 jml, version 0.3.6
-``
+```
 
 
 ## Benutzung
 
 `jml` benötigt im einfachsten Fall den Pfad des Basisprojektes und den Pfad des Ausgabeordners:
 
-``console
+```console
 $ jml pfad/zum/Basisprojekt --out pfad/zum/ausgabeordner
-``
+```
 
 Nach Ausführung befinden sich in `pfad/zum/ausgabeordner` die Musterlösung und die Projektversionen.
 
@@ -78,7 +78,7 @@ class Beispiel {
 		//*ml
 	}
 }
-``
+```
 
 Dann erzeugt `jml` diese Ordnerstruktur in `pfad/zum/ausgabeordner`
 
@@ -101,6 +101,7 @@ Inhalt von `Basisprojekt_ML/Beispiel.java`:
             return zahl + pAndereZahl;
         }
     }
+```
 
 Inhalt von `Basisprojekt/Beispiel.java`:
 
