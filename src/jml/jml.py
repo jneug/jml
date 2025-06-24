@@ -205,10 +205,9 @@ def cli(
         config["project_root"] = resolve_path(project_root)
     else:
         if "project_root" in project_config and project_config["project_root"]:
-            config["project_root"] = project_config["project_root"]
+            config["project_root"] = resolve_path(project_config["project_root"])
         else:
             config["project_root"] = source.parent
-
     project_root = config["project_root"]
 
     ## load project root config
