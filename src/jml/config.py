@@ -225,16 +225,16 @@ def load_options_config(options: dict) -> ConfigDict:
             elif k in ("include", "exclude", "encoding"):
                 options_config.ensure_dict("sources")
                 options_config.sources[k] = v
-            elif k == "delete_empty":
+            elif k == "delete_empty" and v:
                 options_config.ensure_dict("sources")
                 options_config.sources.keep_empty_files = False
                 options_config.sources.keep_empty_dirs = False
-            elif k == "no_clear":
+            elif k == "no_clear" and v:
                 options_config.clear = False
-            elif k == "create_zip":
+            elif k == "create_zip" and v:
                 options_config.ensure_dict("zip")
                 options_config.zip.create = True
-            elif k == "delete_solution":
+            elif k == "delete_solution" and v:
                 options_config.ensure_dict("solutions")
                 options_config.solutions.delete = True
             else:
