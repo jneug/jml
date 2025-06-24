@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import logging
-import click
 import fnmatch
-import rich
-from pathlib import Path
+import logging
+import re
 import urllib.parse
+from pathlib import Path
 
+import click
+import rich
 from rich.logging import RichHandler
+
+
+RE_VERSION = re.compile(r"^\d+$")
+RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
 
 
 def configure_logger(
@@ -49,12 +54,13 @@ def resolve_path(path: str | Path, root: str | Path = None) -> Path:
     return path.resolve()
 
 
-def match_patterns(filename: str, patterns: list[str]) -> bool:
-    """Matches a filename against a list of UNIX-like filename patterns.
+def match_patterns(file: str | Path, patterns: list[str]) -> bool:
+    """Matches a file against a list of UNIX-like filename patterns.
     True is returned if filename is matched by at least one pattern.
     """
+    file = str(file)
     for p in patterns:
-        if fnmatch.fnmatch(filename, p):
+        if fnmatch.fnmatch(file, p):
             return True
     return False
 
@@ -62,3 +68,43 @@ def match_patterns(filename: str, patterns: list[str]) -> bool:
 def is_url(url: str) -> bool:
     url = urllib.parse.urlparse(url)
     return url.scheme not in ("file", "")
+
+
+def parse_url(url: str) -> tuple:
+    return urllib.parse.urlparse(url)
+
+
+def get_versions(line: str) -> set[int]:
+    return set()
+
+
+def test_version(version1: str | int, version2: str | int) -> bool:
+    """Compares a version with a version string and checks if the first
+    is in the range defined by the second. The second version can be
+    prefixed by one of =, <, >, >=, <= or != to compare with a range of
+    versions.
+    """
+    if not (v1_match := RE_VERSION2.match(str(version1))):
+        return False
+    if not (v2_match := RE_VERSION2.match(str(version2))):
+        return True
+
+    ver1 = int(version1)
+    ver2 = int(v2_match.group(2))
+    op = v2_match.group(1)
+
+    if len(op) == 0 or op == "=":
+        return ver1 == ver2
+    if op == "=" or op == "==":
+        return ver1 == ver2
+    if op == "<=":
+        return ver1 <= ver2
+    if op == "<":
+        return ver1 < ver2
+    if op == ">=":
+        return ver1 >= ver2
+    if op == ">":
+        return ver1 > ver2
+    if op == "!=" or op == "<>":
+        return ver1 != ver2
+    return False

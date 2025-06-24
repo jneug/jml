@@ -11,7 +11,7 @@ from rich.console import Console
 from jml import __cmdname__, __version__
 
 from .config import CONFIG_FILE, ConfigDict
-from .utils import files, is_url, resolve_path, match_patterns
+from .utils import files, is_url, match_patterns, resolve_path, test_version, parse_url
 
 # Some constants
 RE_VERSION = re.compile(r"^\d+$")
@@ -20,8 +20,6 @@ RE_VERSION2 = re.compile(r"^([!<>=]{0,2})(\d+)$")
 ML_INT = -1
 
 logger = logging.getLogger("jml")
-
-# TODO: Add try-catch error handling and output
 
 
 def create_solution(config: dict, console: Console = None) -> set[int]:
@@ -49,7 +47,12 @@ def create_version(
     vconfig.output_root = vconfig.output_dir
 
     def relp(p: Path) -> Path:
-        return p.relative_to(vconfig.project_root)
+        if p.is_relative_to(vconfig.project_root):
+            return p.relative_to(vconfig.project_root)
+        elif p.is_relative_to(vconfig.output_root):
+            return p.relative_to(vconfig.output_root)
+        else:
+            return p
 
     # prepare output name
     if vconfig.is_ml:
@@ -122,10 +125,10 @@ def create_version(
             if file == CONFIG_FILE:
                 logger.debug(f"[jml.file]{relpath!s:>32}[/] [red bold]X[/]  (skipped)")
                 continue
-            elif match_patterns(file, exclude):
+            elif match_patterns(relpath, exclude):
                 logger.info(f"[jml.file]{relpath!s:>32}[/] [red bold]X[/]")
                 continue
-            elif match_patterns(file, include):
+            elif match_patterns(relpath, include):
                 not_empty, _versions = compile_file(
                     version, fullpath, fulloutpath, vconfig
                 )
@@ -145,8 +148,9 @@ def create_version(
                 )
 
     # process additional files
-    for f in process_files(vconfig.output_dir, vconfig):
-        logger.info(f"{f!s:>32} -> {f!s}")
+    if not vconfig.is_ml or not vconfig.solutions.delete:
+        for f in process_files(vconfig.output_dir, vconfig):
+            logger.info(f"{'':>32} [green bold]->[/] {relp(f)!s}")
 
     if vconfig.is_ml and vconfig.solutions.delete:
         files.remove_path(vconfig.output_dir)
@@ -156,9 +160,9 @@ def create_version(
     elif vconfig.zip.create or vconfig.zip.only_zip:
         try:
             zip_file = files.create_zip(vconfig.output_dir, dest=vconfig.zip.dir)
-            logger.info(f"created zip file at {relp(zip_file)}")
+            logger.info(f"created zip file at [jml.path]{relp(zip_file)}[/]")
         except OSError as oserr:
-            logger.warning(f"could not create zip ({oserr.strerror})")
+            logger.warning(f"failed to create zip: [jml.err]{oserr.strerror}[/]")
         finally:
             if vconfig.zip.only_zip:
                 files.remove_path(vconfig.output_dir)
@@ -265,38 +269,6 @@ def create_transform(version: int, config: ConfigDict) -> t.Callable:
     return transform
 
 
-def test_version(version1: str | int, version2: str | int) -> bool:
-    """Compares a version with a version string and checks if the first
-    is in the range defined by the second. The second version can be
-    prefixed by one of =, <, >, >=, <= or != to compare with a range of
-    versions.
-    """
-    if not (v1_match := RE_VERSION2.match(str(version1))):
-        return False
-    if not (v2_match := RE_VERSION2.match(str(version2))):
-        return True
-
-    ver1 = int(version1)
-    ver2 = int(v2_match.group(2))
-    op = v2_match.group(1)
-
-    if len(op) == 0 or op == "=":
-        return ver1 == ver2
-    if op == "=" or op == "==":
-        return ver1 == ver2
-    if op == "<=":
-        return ver1 <= ver2
-    if op == "<":
-        return ver1 < ver2
-    if op == ">=":
-        return ver1 >= ver2
-    if op == ">":
-        return ver1 > ver2
-    if op == "!=" or op == "<>":
-        return ver1 != ver2
-    return False
-
-
 def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
     if "files" in config:
         if "files_cache" in config:
@@ -310,7 +282,7 @@ def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
             file["source_path"] = resolve_path(file["source"])
             file["target_path"] = resolve_path(file["name"], root=output_dir)
 
-            logger.debug(f"processing /{file['name']}")
+            logger.debug(f"processing [jml.path]{file['name']}[/]")
             if processed_file := process_file(file, config, cache=file_cache):
                 yield processed_file
 
@@ -318,12 +290,17 @@ def process_files(output_dir: Path, config: dict) -> Iterable[Path]:
 def process_file(file: dict, config: dict, cache: Path) -> Path:
     if is_url(file["source"]):
         try:
+            # Create host-specific cache folder to prevent name collisions
+            parsed_url = parse_url(file["source"])
+            cache = cache / parsed_url.hostname
+            cache.mkdir(exist_ok=True)
+
             files.download_file(
                 file["source"],
                 file["target_path"],
                 cache=cache,
                 checksum=file.get("checksum"),
-                checksum_method=file.get("checksum_method", "sha256"),
+                checksum_method=file.get("checksum_method", "sha1"),
             )
         except OSError as oserr:
             logger.warning(
